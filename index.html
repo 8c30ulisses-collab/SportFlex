@@ -36,6 +36,9 @@
 <script>
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  // quando sai uma versão nova, recarrega uma vez para a app passar a usá-la
+  const had=!!navigator.serviceWorker.controller;let rl=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!rl){rl=true;location.reload()}});
 }
 </script>
 </body>
