@@ -1,0 +1,92 @@
+(function(){
+const SF=window.SF,E=SF.esc,I=SF.icon;
+const fmt=t=>{const d=new Date(t);return d.toLocaleDateString('pt-PT',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})};
+/* ---------- Carteira ---------- */
+SF.screens.carteira=()=>{const s=SF.st;
+ return `<div class="top"><button class="btn sec sm" data-a="back" aria-label="Voltar" style="min-width:2.4rem;padding:.4rem .6rem">${I('back')}</button><h1 class="grow">Carteira Flex</h1></div>
+ <div class="col two" style="gap:1rem"><div class="hero-wallet"><div class="sm" style="opacity:.85">Saldo disponível</div><div class="row" style="gap:.6rem;margin-top:.2rem"><span class="coin" style="width:2.2rem;height:2.2rem"></span><span class="big" style="font-size:3.4rem">${s.coins}</span><span style="opacity:.85">Moedas Flex</span></div>${s.disc?'<div class="tag" style="margin-top:.8rem;width:fit-content;background:rgba(255,255,255,.2)">Desconto de 20% ativo</div>':''}</div>
+ <div class="row"><button class="btn grow" data-a="topup">${I('plus')}Comprar moedas</button><button class="btn sec grow" data-a="giftsheet">${I('gift')}Enviar a amigo</button></div>
+ <div class="card"><b>Como funcionam as moedas</b><div class="mut sm" style="margin-top:.3rem">1 Moeda Flex compra cerca de meio jogo. Um jogo custa 1 a 3 moedas, um clube 9 e uma competição de 8 a 15. As moedas não expiram.</div></div>
+ <div class="h2" style="margin-top:0"><h2>Histórico</h2></div>
+ <div class="list">${s.tx.length?s.tx.map(t=>`<div class="li"><span class="ic">${I(t.v>0?'plus':'ball')}</span><span class="grow"><b style="font-weight:600">${E(t.t)}</b><div class="mut sm">${E(t.d)} · ${fmt(t.at)}</div></span><b style="color:${t.v>0?'var(--ok)':'var(--fg)'}">${t.v>0?'+':''}${t.v}</b></div>`).join(''):'<div class="mut">Ainda sem movimentos. Compra o teu primeiro pack em Explorar.</div>'}</div></div>`};
+SF.topup=missing=>{SF.sheet(`<h3>${missing?'Faltam-te '+missing+' moedas':'Comprar Moedas Flex'}</h3><div class="mut sm">Pagamento simulado nesta demonstração. Nenhum valor é cobrado.</div>
+ <div class="col" style="gap:.6rem">${SF.BUNDLES.map((b,i)=>`<button class="g" data-a="pay" data-v="${i}" style="${b.pop?'border-color:var(--accent)':''}"><span class="ic" style="width:3rem;height:3rem"><span class="coin" style="width:1.6rem;height:1.6rem"></span></span><span class="tt"><b>${b.c} moedas${b.b?` + ${b.b} de bónus`:''}</b><span>${b.pop?'Mais escolhido':'Sem validade'}</span></span><span class="price">${b.eur}</span></button>`).join('')}</div>`)};
+SF.act.topup=()=>SF.topup(0);
+SF.act.pay=el=>{const b=SF.BUNDLES[+el.dataset.v];SF._bundle=b;
+ SF.sheet(`<h3>Pagamento</h3><div class="card row"><span class="grow"><b>${b.c+b.b} moedas Flex</b></span><b>${b.eur}</b></div>
+ <div class="col" style="gap:.6rem"><button class="btn sec" data-a="paygo">MB WAY</button><button class="btn sec" data-a="paygo">Cartão</button><button class="btn sec" data-a="paygo">Apple Pay / Google Pay</button></div><div class="mut sm" style="text-align:center">Demonstração: escolhe qualquer método para continuar.</div>`)};
+SF.act.paygo=el=>{el.innerHTML='A processar…';el.disabled=true;setTimeout(()=>{const b=SF._bundle,n=b.c+b.b;SF.st.coins+=n;SF.addTx('Compra de moedas',b.eur,n);SF.save();SF.close();SF.toast('+'+n+' Moedas Flex adicionadas');SF.render()},900)};
+SF.act.giftsheet=()=>SF.giftFlow();
+SF.act.giftgame=el=>SF.giftFlow(el.dataset.v);
+SF.giftFlow=gid=>{const games=SF.GAMES.filter(g=>!g.done);SF._gift={f:SF.FRIENDS[0].id,g:gid||games[0].id};SF.giftView()};
+SF.giftView=()=>{const G=SF._gift,g=SF.game(G.g);
+ SF.sheet(`<h3>Enviar um pack a um amigo</h3><div class="mut sm">O teu amigo recebe acesso ao jogo na app dele.</div>
+ <div class="chips">${SF.FRIENDS.map(f=>`<button class="chip ${G.f===f.id?'on':''}" data-a="gpickf" data-v="${f.id}">${f.n}</button>`).join('')}</div>
+ <div class="col" style="gap:.5rem">${SF.GAMES.filter(x=>!x.done).slice(0,6).map(x=>`<button class="g ${G.g===x.id?'':'dim'}" data-a="gpickg" data-v="${x.id}" style="${G.g===x.id?'border-color:var(--accent)':''}"><span class="pair">${SF.crest(x.h,'xs')}${SF.crest(x.a,'xs')}</span><span class="tt"><b>${E(x.title)}</b><span>${SF.when(x)}</span></span><span class="price">${SF.coin}${x.price}</span></button>`).join('')}</div>
+ <button class="btn" data-a="gsend">${I('send')}Enviar por ${g.price} moedas</button>`)};
+SF.act.gpickf=el=>{SF._gift.f=el.dataset.v;SF.giftView()};SF.act.gpickg=el=>{SF._gift.g=el.dataset.v;SF.giftView()};
+SF.act.gsend=()=>{const G=SF._gift,g=SF.game(G.g),s=SF.st;if(s.coins<g.price){SF.close();return SF.topup(g.price-s.coins)}
+ s.coins-=g.price;s.gifts++;s.points+=15;const f=SF.FRIENDS.find(x=>x.id===G.f);SF.addTx('Pack oferecido',f.n+' · '+g.title,-g.price);SF.save();SF.close();SF.toast('Pack enviado a '+f.n+'. +15 pontos');SF.render()};
+/* ---------- Recompensas ---------- */
+SF.screens.premios=()=>{const s=SF.st;
+ const rk=[...SF.RANKING,{n:s.name,p:s.points,me:true}].sort((a,b)=>b.p-a.p);
+ const up=SF.GAMES.filter(g=>!g.done).slice(0,3);
+ const miss=[['Vê 2 jogos esta semana',Math.min(2,s.watched.length),2,'+30 pts'],['Convida um amigo',Math.min(1,s.invites),1,'+20 pts'],['Acerta numa previsão',Math.min(1,s.predWin),1,'+50 pts']];
+ return `<div class="top"><h1>Recompensas<small>Pontos, ranking e prémios</small></h1><button class="coinpill" data-a="tab" data-v="carteira">${SF.coin}${s.coins}</button></div>
+ <div class="col two" style="gap:1rem"><div class="hero-wallet"><div class="sm" style="opacity:.85">Os teus pontos</div><div class="big" style="font-size:3.6rem;margin-top:.2rem">${s.points}</div><div class="sm" style="opacity:.85;margin-top:.3rem">Subes de nível aos ${Math.ceil((s.points+1)/250)*250} pontos</div><div class="bar" style="margin-top:.6rem;background:rgba(0,0,0,.3)"><i style="width:${(s.points%250)/250*100}%;background:#fff"></i></div></div>
+ <div><div class="h2" style="margin-top:0"><h2>Missões da semana</h2></div><div class="col" style="gap:.6rem;margin-top:.6rem">${miss.map(m=>`<div class="card" style="padding:.8rem"><div class="row"><b class="grow" style="font-weight:600;font-size:.88rem">${m[0]}</b><span class="tag" style="background:var(--bg3)">${m[3]}</span></div><div class="bar" style="margin-top:.5rem"><i style="width:${m[1]/m[2]*100}%"></i></div></div>`).join('')}</div></div>
+ <div><div class="h2" style="margin-top:0"><h2>Previsões</h2></div><div class="mut sm">Acerta no resultado: 50 pontos. Acerta no vencedor: 15.</div><div class="col" style="gap:.6rem;margin-top:.6rem">${up.map(g=>{const pr=s.preds[g.id];return `<div class="card" style="padding:.8rem"><div class="row"><span class="pair">${SF.crest(g.h,'xs')}${SF.crest(g.a,'xs')}</span><b class="grow" style="font-weight:600;font-size:.85rem">${E(g.title)}</b></div>
+ ${pr&&pr.done?`<div class="sm" style="margin-top:.5rem;color:${pr.pts>=15?'var(--ok)':'var(--mut)'}">Resultado ${pr.r[0]}-${pr.r[1]}. A tua previsão ${pr.h}-${pr.a}: ${pr.pts>0?'+'+pr.pts+' pontos':'sem pontos'}.</div>`:
+ `<div class="row" style="margin-top:.6rem;justify-content:space-between"><div class="stepper"><button data-a="pstep" data-g="${g.id}" data-s="h" data-d="-1" aria-label="Menos golos casa">-</button><b>${pr?pr.h:0}</b><button data-a="pstep" data-g="${g.id}" data-s="h" data-d="1" aria-label="Mais golos casa">+</button></div><span class="mut">-</span><div class="stepper"><button data-a="pstep" data-g="${g.id}" data-s="a" data-d="-1" aria-label="Menos golos fora">-</button><b>${pr?pr.a:0}</b><button data-a="pstep" data-g="${g.id}" data-s="a" data-d="1" aria-label="Mais golos fora">+</button></div><button class="btn sm" data-a="pgo" data-g="${g.id}">${pr?'Ver resultado':'Guardar'}</button></div>`}</div>`}).join('')}</div></div>
+ <div><div class="h2" style="margin-top:0"><h2>Ranking semanal</h2></div><div class="col" style="gap:.3rem;margin-top:.6rem">${rk.map((r,i)=>`<div class="rank ${r.me?'me':''}"><span class="n">${i+1}</span><span class="av" style="background:var(--bg3)">${E(r.n[0])}</span><b class="grow" style="font-weight:600">${E(r.n)}${r.me?' (tu)':''}</b><b class="big" style="font-size:1.3rem">${r.p}</b></div>`).join('')}</div></div>
+ <div><div class="h2" style="margin-top:0"><h2>Troca os teus pontos</h2></div><div class="list" style="margin-top:.3rem">${SF.PRIZES.map(p=>`<div class="li"><span class="ic">${I('gift')}</span><span class="grow"><b style="font-weight:600;font-size:.88rem">${E(p.n)}</b><div class="mut sm">${p.pts} pontos</div></span><button class="btn sm ${s.points>=p.pts?'':'sec'}" data-a="redeem" data-v="${p.id}" ${s.points>=p.pts?'':'disabled'}>Trocar</button></div>`).join('')}</div></div></div>`};
+SF.act.pstep=el=>{const s=SF.st,g=el.dataset.g;const p=s.preds[g]||(s.preds[g]={h:0,a:0});if(p.done)return;p[el.dataset.s]=Math.max(0,Math.min(9,p[el.dataset.s]+ +el.dataset.d));SF.save();SF.render()};
+SF.act.pgo=el=>{const s=SF.st,g=el.dataset.g;const p=s.preds[g]||(s.preds[g]={h:0,a:0});
+ if(!p.saved){p.saved=true;SF.save();SF.toast('Previsão guardada. Toca outra vez para ver o resultado');SF.render();return}
+ const r=[Math.floor(Math.random()*4),Math.floor(Math.random()*4)];let pts=0;if(r[0]===p.h&&r[1]===p.a)pts=50;else if(Math.sign(r[0]-r[1])===Math.sign(p.h-p.a))pts=15;
+ p.done=true;p.r=r;p.pts=pts;if(pts)s.points+=pts;if(pts===50)s.predWin++;SF.save();SF.toast(pts?'Acertaste! +'+pts+' pontos':'Desta vez não deu');SF.render()};
+SF.act.redeem=el=>{const s=SF.st,p=SF.PRIZES.find(x=>x.id===el.dataset.v);if(s.points<p.pts)return;s.points-=p.pts;
+ if(p.kind==='coins'){s.coins+=p.v;SF.addTx('Prémio',p.n,p.v)}else if(p.kind==='disc'){s.disc=true;SF.addTx('Prémio',p.n,0)}else SF.addTx('Prémio',p.n+' · inscrito no sorteio',0);
+ SF.save();SF.toast(p.kind==='draw'?'Inscrito no sorteio':'Prémio trocado');SF.render()};
+/* ---------- Perfil ---------- */
+SF.screens.perfil=()=>{const s=SF.st;const sw=(k,a,l,d)=>`<div class="li"><span class="grow"><b style="font-weight:600">${l}</b><div class="mut sm">${d}</div></span><button class="sw ${s[k]?'on':''}" data-a="${a}" role="switch" aria-checked="${!!s[k]}" aria-label="${l}"></button></div>`;
+ return `<div class="top"><h1>Perfil</h1><button class="coinpill" data-a="tab" data-v="carteira">${SF.coin}${s.coins}</button></div>
+ <div class="col two" style="gap:1rem"><div class="card row" style="gap:1rem"><span class="av" style="width:3.6rem;height:3.6rem;font-size:1.4rem;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff">${E(s.name[0])}</span><span class="grow"><b style="font-size:1.1rem">${E(s.name)}</b><div class="mut sm">${s.points} pontos · ${s.watched.length} ${s.watched.length===1?'jogo visto':'jogos vistos'}</div></span></div>
+ <button class="card row" data-a="tab" data-v="carteira" style="gap:.8rem"><span class="ic">${I('wallet')}</span><span class="grow"><b>Carteira Flex</b><div class="mut sm">${s.coins} moedas · comprar e enviar packs</div></span>${I('chev')}</button>
+ <div><div class="h2" style="margin-top:0"><h2>Os teus clubes</h2></div><div class="chips" style="margin-top:.6rem">${Object.keys(SF.TEAMS).map(id=>`<button class="chip ${s.favs.includes(id)?'on':''}" data-a="fav" data-v="${id}">${E(SF.TEAMS[id].n)}</button>`).join('')}</div></div>
+ <div><div class="h2" style="margin-top:0"><h2>Acessibilidade</h2></div><div class="card" style="margin-top:.6rem;padding:.4rem 1rem">${sw('ess','ess','Modo Essencial','Só os jogos do teu clube, botões grandes e menos opções.')}
+ <div class="li"><span class="grow"><b style="font-weight:600">Tamanho do texto</b></span><div class="seg" style="width:9rem">${['A','A+','A++'].map((l,i)=>`<button class="${s.ts===i?'on':''}" data-a="ts" data-v="${i}">${l}</button>`).join('')}</div></div>
+ <div class="li"><span class="grow"><b style="font-weight:600">Comandos por voz</b><div class="mut sm">Fala com a app em vez de tocar.</div></span><button class="btn sm sec" data-a="voice">${I('mic')}Testar</button></div></div></div>
+ <div><div class="h2" style="margin-top:0"><h2>Tema</h2></div><div class="row" style="margin-top:.6rem;gap:.7rem">${SF.ACCENTS.map(c=>`<button class="sw-color ${s.accent===c?'on':''}" data-a="accent" data-v="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}</div></div>
+ <div class="card" style="padding:.4rem 1rem">${sw('notif','notif','Alertas de jogos','Aviso antes de começar o jogo do teu clube.')}</div>
+ <div><div class="h2" style="margin-top:0"><h2>Histórico</h2></div><div class="list">${s.watched.length?s.watched.map(id=>{const g=SF.game(id);return `<button class="li" data-a="game" data-v="${id}"><span class="pair">${SF.crest(g.h,'xs')}${SF.crest(g.a,'xs')}</span><b class="grow" style="font-weight:600;font-size:.85rem">${E(g.title)}</b>${I('chev')}</button>`}).join(''):'<div class="mut sm">Ainda não viste nenhum jogo.</div>'}</div></div>
+ <div class="mut sm" style="text-align:center">Demonstração. Calendários e resultados são um instantâneo de ${SF.SNAPSHOT} recolhido de fontes públicas e podem conter imprecisões. Os preços são ilustrativos, os emblemas são genéricos e a SportFlex não tem direitos de transmissão destas competições.</div><button class="btn ghost" data-a="reset">Repor demonstração</button></div>`};
+SF.act.fav=el=>{const s=SF.st,v=el.dataset.v;s.favs=s.favs.includes(v)?s.favs.filter(x=>x!==v):[...s.favs,v];if(!s.favs.length)s.favs=[v];s.sports=[...new Set(s.favs.map(f=>SF.TEAMS[f].sp))];SF.save();SF.render()};
+SF.act.ess=()=>{SF.st.ess=!SF.st.ess;SF.save();SF.applyPrefs();SF.render();SF.toast(SF.st.ess?'Modo Essencial ligado':'Modo Essencial desligado')};
+SF.act.notif=()=>{SF.st.notif=!SF.st.notif;SF.save();SF.render()};
+SF.act.ts=el=>{SF.st.ts=+el.dataset.v;SF.save();SF.applyPrefs();SF.render()};
+SF.act.accent=el=>{SF.st.accent=el.dataset.v;SF.save();SF.applyPrefs();SF.render()};
+SF.act.reset=()=>SF.reset();
+/* ---------- Voz ---------- */
+SF.act.voice=()=>{const cmds=[['“Mostra os jogos do meu clube”','explorar'],['“Abre a carteira”','carteira'],['“Quero ver o jogo ao vivo”','jogo-g1'],['“Quais são os meus prémios”','premios']];
+ SF.sheet(`<div style="text-align:center;display:flex;flex-direction:column;gap:.8rem;align-items:center"><span class="ic" style="width:4.6rem;height:4.6rem;border-radius:50%;background:var(--accent);color:#fff;box-shadow:0 0 0 .8rem color-mix(in srgb,var(--accent) 25%,transparent)">${I('mic')}</span><h3>Diz o que queres fazer</h3><div class="mut sm">Demonstração: toca num comando para simular a voz.</div></div><div class="col" style="gap:.5rem">${cmds.map(c=>`<button class="btn sec" data-a="vgo" data-v="${c[1]}">${c[0]}</button>`).join('')}</div>`)};
+SF.act.vgo=el=>{SF.close();SF.toast('Comando reconhecido');SF.go(el.dataset.v)};
+/* ---------- Assistente ---------- */
+SF._chat=[{b:1,t:'Olá! Sou o assistente SportFlex. Posso recomendar jogos, explicar os packs ou ajudar com a carteira.'}];
+const QUICK=['O que há para ver hoje?','Recomenda-me um jogo','Quanto custa um pack clube?','Como envio um pack a um amigo?'];
+function answer(q){const s=SF.st,l=q.toLowerCase();
+ if(/hoje|ver|direto|vivo|jogos/.test(l)){const nx=SF.GAMES.filter(g=>!g.done).slice(0,3);const big=SF.GAMES.find(g=>g.big);return {t:`Os próximos jogos são ${nx.map(g=>g.title+' ('+SF.when(g).toLowerCase()+')').join(', ')}. O jogo grande do mês é ${big.title}, ${SF.when(big).toLowerCase()}.`,g:nx[0].id}}
+ if(/recomend|sugest|jogo/.test(l)){const r=SF.recs()[0];return {t:`Sugiro ${r.g.title}. ${r.why}. Custa ${SF.cost('jogo',r.g.id)} moedas.`,g:r.g.id}}
+ if(/pre[cç]o|custa|pack|quanto/.test(l))return {t:'Pack Jogo: 1 a 3 moedas. Pack Clube: 9 moedas, todos os jogos da equipa. Pack Competição: 8 a 15. Pack Modalidade: 8 a 12. Só pagas o que queres ver.'};
+ if(/amig|envi|oferec|presente/.test(l))return {t:'Na carteira, toca em "Enviar a amigo", escolhe o amigo e o jogo. Ele recebe o acesso na hora e tu ganhas 15 pontos.',go:'carteira'};
+ if(/moeda|saldo|carteira|pagar/.test(l))return {t:`Tens ${s.coins} Moedas Flex e ${s.points} pontos. Podes comprar mais na carteira.`,go:'carteira'};
+ if(/ponto|pr[eé]mio|ranking|recompensa/.test(l))return {t:`Tens ${s.points} pontos. Vê jogos, convida amigos e acerta previsões para subires no ranking.`,go:'premios'};
+ if(/idos|simples|essencial|grande|letra|voz/.test(l))return {t:'O Modo Essencial mostra só os jogos do teu clube, com botões grandes e comandos por voz. Ativa no Perfil.',go:'perfil'};
+ return {t:'Ainda estou a aprender. Experimenta perguntar por jogos de hoje, preços dos packs, carteira ou recompensas.'}}
+SF.act.assistant=()=>{SF.chatOpen()};
+SF.chatOpen=()=>{SF.sheet(`<div class="row"><span class="ic">${I('spark')}</span><h3 class="grow">Assistente SportFlex</h3></div><div class="msgs" id="amsgs" style="max-height:none;flex:1;min-height:12rem">${SF._chat.map(m=>`<div class="m ${m.b?'':'me'}">${E(m.t)}${m.g?`<br><button class="btn sm" style="margin-top:.5rem" data-a="game" data-v="${m.g}">Ver jogo</button>`:''}${m.go?`<br><button class="btn sm" style="margin-top:.5rem" data-a="tab" data-v="${m.go}">Abrir</button>`:''}</div>`).join('')}</div>
+ <div class="chips">${QUICK.map(q=>`<button class="chip" data-a="ask" data-v="${E(q)}">${E(q)}</button>`).join('')}</div>
+ <div class="inp"><input id="ain" placeholder="Pergunta qualquer coisa" data-enter="asksend" aria-label="Pergunta"><button class="btn sm" data-a="asksend" aria-label="Enviar">${I('send')}</button></div>`,{full:true});const m=SF.$('#amsgs');m.scrollTop=m.scrollHeight};
+SF.act.ask=el=>{SF._chat.push({t:el.dataset.v});SF._chat.push(Object.assign({b:1},answer(el.dataset.v)));SF.chatOpen()};
+SF.act.asksend=()=>{const i=SF.$('#ain');if(!i||!i.value.trim())return;const q=i.value.trim();SF._chat.push({t:q});SF._chat.push(Object.assign({b:1},answer(q)));SF.chatOpen()};
+})();
