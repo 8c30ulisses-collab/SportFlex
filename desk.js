@@ -22,7 +22,7 @@ SF.homeDesktop=()=>{
  const open=ac?`<button class="btn" data-a="watch" data-v="${g.id}">${I('play')}Abrir jogo</button>`:`<button class="btn" data-a="buy" data-k="jogo" data-i="${g.id}">${SF.coin}Comprar por ${SF.cost('jogo',g.id)} moedas</button>`;
  return `<div class="top"><div><h1>${hello()}, ${E(s.name)}</h1><small>${up.filter(x=>x.min<2880).length} jogos nas próximas 48 horas · calendário real de ${E(SF.SNAPSHOT)} <span class="tag" style="background:var(--bg3);margin-left:.3rem">DEMO</span></small></div>
  <button class="dsearch" data-a="tab" data-v="explorar">${I('search')}<span>Procurar jogo, clube ou competição</span></button>
- <button class="btn sec sm" data-a="voice">${I('mic')}Voz</button><button class="coinpill" data-a="tab" data-v="carteira" aria-label="Carteira Flex">${SF.coin}${s.coins}</button></div>
+ <button class="btn sec sm" data-a="voice">${I('mic')}Voz</button><button class="coinpill" data-a="tab" data-v="carteira" aria-label="Carteira Flex">${SF.coin}<span data-count="coins">${s.coins}</span></button></div>
  <div class="dh">
   <section class="dbanner" style="background:linear-gradient(120deg,${h.c[0]} 0%,${h.c[1]} 48%,${a.c[1]} 100%)">
    <div class="dbl"><div class="tags"><span class="tag">${E(SF.COMPS[g.comp].n)}</span><span class="tag">${SF.when(g)}</span>${ac?'<span class="tag ok">Tens acesso</span>':''}</div>
@@ -32,14 +32,13 @@ SF.homeDesktop=()=>{
    <div class="dbr">${SF.crest(g.h,'xl')}<b>VS</b>${SF.crest(g.a,'xl')}</div></section>
   <aside class="dside">
    <div class="card dwallet"><div class="row"><span class="grow mut sm">Carteira Flex</span><button class="mini" data-a="tab" data-v="carteira">Abrir ${I('chev')}</button></div>
-    <div class="row" style="gap:.5rem;margin:.3rem 0 .6rem"><span class="coin" style="width:1.8rem;height:1.8rem"></span><span class="big" style="font-size:3rem">${s.coins}</span><span class="mut">moedas</span></div>
+    <div class="row" style="gap:.5rem;margin:.3rem 0 .6rem"><span class="coin" style="width:1.8rem;height:1.8rem"></span><span class="big" style="font-size:3rem" data-count="coins">${s.coins}</span><span class="mut">moedas</span></div>
     <div class="row"><button class="btn sm grow" data-a="topup">${I('plus')}Comprar</button><button class="btn sm sec grow" data-a="giftsheet">${I('gift')}Enviar a amigo</button></div>
     <div class="mut sm" style="margin-top:.8rem">${owned.length?'Os teus packs':'Ainda sem packs. Escolhe um jogo para começar.'}</div>
     ${owned.length?`<div class="chips" style="margin-top:.4rem">${owned.slice(0,4).map(o=>`<span class="chip on">${E(SF.packName(o.k,o.i))}</span>`).join('')}</div>`:''}</div>
    <div class="card"><div class="row"><b class="grow">Missões da semana</b><span class="mut sm">${s.points} pts</span></div>
     <div class="col" style="gap:.7rem;margin-top:.8rem">${miss.map(m=>`<div><div class="row sm" style="justify-content:space-between"><span>${m[0]}</span><span class="mut">${m[1]}/${m[2]}</span></div><div class="bar" style="margin-top:.3rem"><i style="width:${m[1]/m[2]*100}%"></i></div></div>`).join('')}</div></div>
   </aside>
-  <section class="full"><div class="dh-h"><h2>${I('spark')}Escolhidos para ti</h2><button data-a="tab" data-v="explorar">Ver todos</button></div><div class="dgrid4">${recs.slice(1,5).map(SF.hero).join('')}</div></section>
   <section class="card dcal"><div class="dh-h" style="margin:0 0 .8rem"><h2>Calendário</h2></div>
    <div class="chips" style="margin-bottom:.6rem"><button class="chip ${SF._cal==='all'?'on':''}" data-a="calf" data-v="all">Todas</button>${withGames.map(c=>`<button class="chip ${SF._cal===c?'on':''}" data-a="calf" data-v="${c}">${E(SF.COMPS[c].n)}</button>`).join('')}</div>
    <div class="cal">${cal||'<div class="mut">Sem jogos nesta competição.</div>'}</div></section>
@@ -50,6 +49,7 @@ SF.homeDesktop=()=>{
    <div class="card"><div class="row"><b class="grow">Ranking semanal</b><button class="mini" data-a="tab" data-v="premios">Ver tudo ${I('chev')}</button></div>
     <div class="col" style="gap:.25rem;margin-top:.6rem">${rk.map((r,i)=>`<div class="rank ${r.me?'me':''}"><span class="n">${i+1}</span><span class="av" style="background:var(--bg3)">${E(r.n[0])}</span><b class="grow" style="font-weight:600">${E(r.n)}${r.me?' (tu)':''}</b><b class="big" style="font-size:1.3rem">${r.p}</b></div>`).join('')}</div></div>
   </aside>
+  <section class="full"><div class="dh-h"><h2>${I('spark')}Escolhidos para ti</h2><button data-a="tab" data-v="explorar">Ver todos</button></div><div class="dgrid4">${recs.slice(1,5).map(SF.hero).join('')}</div></section>
   <section class="full"><div class="dh-h"><h2>Competições</h2><button data-a="tab" data-v="explorar">Explorar packs</button></div><div class="dcomps">${comps.map(c=>{const co=SF.COMPS[c],n=SF.GAMES.filter(x=>x.comp===c).length,own=SF.has('comp',c);return `<div class="ctile"><span class="ic">${I('trophy')}</span><b>${E(co.n)}</b><span class="mut sm">${n?n+(n===1?' jogo':' jogos')+' na app':'calendário em breve'}</span><button class="price ${own?'own':''}" data-a="buy" data-k="comp" data-i="${c}">${own?I('check')+'Tens':SF.coin+SF.cost('comp',c)}</button></div>`}).join('')}</div></section>
   <section class="full"><div class="dh-h"><h2>Resultados e replay inteligente</h2></div><div class="dgrid4">${done.slice(0,8).map(x=>`<button class="card dres" data-a="game" data-v="${x.id}"><div class="row"><span class="pair">${SF.crest(x.h)}${SF.crest(x.a)}</span><span class="sc" style="margin-left:auto;font-size:1.6rem">${x.hs} - ${x.as}</span></div><b style="font-weight:600">${E(x.title)}</b><span class="mut sm">${E(x.lbl)}</span><span class="tag" style="background:var(--bg3);width:fit-content">${I('replay')}${SF.moments(x).length} momentos</span></button>`).join('')}</div></section>
  </div>`};

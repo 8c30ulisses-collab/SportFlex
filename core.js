@@ -75,7 +75,10 @@ SF.buy=(k,id)=>{const s=SF.st,c=SF.cost(k,id);
 /* UI base */
 SF.toast=m=>{const t=SF.$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(SF._tt);SF._tt=setTimeout(()=>t.classList.remove('show'),2300)};
 SF.sheet=(html,o)=>{o=o||{};SF.$('#layer').innerHTML=`<div class="sheetwrap"><div class="scrim" data-a="close"></div><div class="sheet ${o.full?'full':''}" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div></div>`;SF.sheetOpen=true};
-SF.close=()=>{SF.$('#layer').innerHTML='';SF.sheetOpen=false;SF._onclose&&SF._onclose();SF._onclose=null};
+SF.reduced=()=>{try{return matchMedia('(prefers-reduced-motion:reduce)').matches}catch(e){return false}};
+SF.close=()=>{const L=SF.$('#layer'),w=L.firstElementChild;
+ if(w&&w.classList.contains('sheetwrap')&&!w.classList.contains('out')&&!SF.reduced()){w.classList.add('out');w.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));w.querySelectorAll('button,input,textarea').forEach(e=>{e.tabIndex=-1;e.removeAttribute('data-a');e.removeAttribute('data-enter')});setTimeout(()=>{if(w.parentNode)w.remove()},240)}else L.innerHTML='';
+ SF.sheetOpen=false;SF._onclose&&SF._onclose();SF._onclose=null};
 SF.go=r=>{location.hash=r};
 SF.route=()=>{const h=(location.hash||'#home').slice(1);const i=h.indexOf('-');return i<0?{n:h,a:''}:{n:h.slice(0,i),a:h.slice(i+1)}};
 SF.act={};
@@ -107,18 +110,39 @@ SF.render=()=>{
  clearInterval(SF._cdT);
  const r=SF.route(),s=SF.st;const app=SF.$('#app');
  if(!s.onboarded){SF.player&&SF.player.stop();app.innerHTML=SF.screens.onboarding();return}
- const old=SF.$('#view');const same=old&&SF._lastRoute===r.n+'-'+r.a;const sc=same?old.scrollTop:0;
- SF._lastRoute=r.n+'-'+r.a;
+ const old=SF.$('#view');const key=r.n+'-'+r.a;const same=old&&SF._lastRoute===key;const sc=same?old.scrollTop:0;
+ const fresh=SF._lastRoute!==key||(SF._enterKey===key&&Date.now()-SF._enterAt<300);const changed=fresh&&!SF.reduced();if(changed&&SF._lastRoute!==key){SF._enterKey=key;SF._enterAt=Date.now()}const prevN=(SF._lastRoute||'').split('-')[0];
+ SF._lastRoute=key;
+ const ORD=['home','explorar','premios','perfil'],DEEP=['jogo','carteira'];
+ let dir='up';if(DEEP.includes(r.n))dir='deep';else if(DEEP.includes(prevN))dir='back';else if(ORD.includes(prevN)&&ORD.includes(r.n))dir=ORD.indexOf(r.n)>ORD.indexOf(prevN)?'fwd':'back';
  const fn=SF.screens[r.n]||SF.screens.home;
  if(r.n!=='jogo')SF.player&&SF.player.stop();
  const body=fn(r.a);
  const tabs=s.ess?[['home','home','Início'],['explorar','ball','Jogos'],['perfil','user','Perfil']]:[['home','home','Home'],['explorar','search','Explorar'],['premios','trophy','Prémios'],['perfil','user','Perfil']];
  const cur=['home','explorar','premios','perfil'].includes(r.n)?r.n:(r.n==='carteira'?'perfil':'explorar');
  const showNav=r.n!=='jogo';
- app.innerHTML=`<main class="view" id="view"><div class="wrap">${body}</div></main>${showNav?`<nav class="nav" aria-label="Navegação principal"><div class="rail-logo"><b>//</b><span>SPORT FLEX</span></div>${tabs.map(t=>`<button data-a="tab" data-v="${t[0]}" class="${cur===t[0]?'on':''}" ${cur===t[0]?'aria-current="page"':''}>${SF.icon(t[1])}<span>${t[2]}</span></button>`).join('')}</nav>`:''}${(r.n==='home'||r.n==='explorar')?`<button class="fab" data-a="assistant" aria-label="Assistente SportFlex">${SF.icon('spark')}</button>`:''}`;
+ app.innerHTML=`<main class="view ${changed?'enter':''}" data-dir="${dir}" id="view"><div class="wrap">${body}</div></main>${showNav?`<nav class="nav ${changed?'enter':''}" aria-label="Navegação principal"><button class="rail-logo ${cur==='home'?'on':''}" data-a="tab" data-v="home" aria-label="SportFlex, início"><b>//</b><span>SPORT FLEX</span></button>${tabs.map(t=>`<button data-a="tab" data-v="${t[0]}" class="${cur===t[0]?'on':''}" ${cur===t[0]?'aria-current="page"':''}>${SF.icon(t[1])}<span>${t[2]}</span></button>`).join('')}</nav>`:''}${(r.n==='home'||r.n==='explorar')?`<button class="fab" data-a="assistant" aria-label="Assistente SportFlex">${SF.icon('spark')}</button>`:''}`;
  const v=SF.$('#view');if(sc)v.scrollTop=sc;
  SF.after&&SF.after[r.n]&&SF.after[r.n](r.a);
+ SF.navInd(changed);SF.countify();
 };
+/* indicador deslizante da navegação */
+SF.navInd=anim=>{const nav=SF.$('.nav');if(!nav){SF._ind=null;return}
+ const on=[...nav.querySelectorAll('button.on')].find(b=>b.offsetWidth>0);let ind=nav.querySelector('.nav-ind');
+ if(!on){ind&&ind.remove();nav.classList.remove('has-ind');return}
+ if(!ind){ind=document.createElement('i');ind.className='nav-ind';ind.setAttribute('aria-hidden','true');nav.prepend(ind)}
+ const p={x:on.offsetLeft,y:on.offsetTop,w:on.offsetWidth,h:on.offsetHeight};
+ const set=q=>{ind.style.width=q.w+'px';ind.style.height=q.h+'px';ind.style.transform='translate('+q.x+'px,'+q.y+'px)'};
+ if(anim&&SF._ind){ind.style.transition='none';set(SF._ind);void ind.offsetWidth;ind.style.transition=''}
+ set(p);SF._ind=p;nav.classList.add('has-ind')};
+window.addEventListener('resize',()=>{clearTimeout(SF._rz);SF._rz=setTimeout(()=>{SF._ind=null;SF.navInd(false)},120)});
+/* contadores animados (moedas, pontos) */
+SF.countify=()=>{const prev=SF._cnt||(SF._cnt={});
+ document.querySelectorAll('[data-count]').forEach(el=>{const k=el.dataset.count,to=+el.textContent,from=prev[k];
+  if(from===undefined||from===to||isNaN(to)||SF.reduced())return;
+  const t0=performance.now(),d=Math.min(1000,380+Math.abs(to-from)*14);el.textContent=from;el.classList.add('bump');
+  const step=now=>{const p=Math.min(1,(now-t0)/d),e=1-Math.pow(1-p,3);el.textContent=Math.round(from+(to-from)*e);if(p<1)requestAnimationFrame(step);else{el.textContent=to;el.classList.remove('bump')}};requestAnimationFrame(step)});
+ prev.coins=SF.st.coins;prev.points=SF.st.points};
 SF.after={};
 window.addEventListener('hashchange',()=>{if(SF.sheetOpen)SF.close();SF.render()});
 })();

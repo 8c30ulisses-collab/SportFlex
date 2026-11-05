@@ -4,9 +4,9 @@ const SF=window.SF,E=SF.esc,I=SF.icon;
 SF._ob=0;
 SF.screens.onboarding=()=>{
  const s=SF.st,st=SF._ob;let b='';
- if(st===0)b=`<div class="logo" style="font-size:1.7rem"><b>//</b>SPORT FLEX</div><div class="mut" style="color:var(--accent);margin-top:-.8rem;font-weight:500">O teu desporto, à tua medida</div>
+ if(st===0)b=`<div class="ob-welcome"><div class="logo" style="font-size:1.7rem"><b>//</b>SPORT FLEX</div><div class="mut" style="color:var(--accent);margin-top:-.8rem;font-weight:500">O teu desporto, à tua medida</div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:1.2rem"><h1>Paga só pelo que <em>queres ver.</em></h1><p class="mut">Compra um jogo, um clube, uma competição ou uma modalidade. Sem mensalidades que não usas.</p>
-  <div class="chips"><span class="chip on">${I('ball')}Por jogo</span><span class="chip on">${I('shield')}Por clube</span><span class="chip on">${I('trophy')}Por competição</span><span class="chip on">${I('bolt')}Por modalidade</span></div></div>`;
+  <div class="chips"><span class="chip on">${I('ball')}Por jogo</span><span class="chip on">${I('shield')}Por clube</span><span class="chip on">${I('trophy')}Por competição</span><span class="chip on">${I('bolt')}Por modalidade</span></div></div></div><div class="ob-dw"><h1>Bem-vindo à SportFlex</h1><p class="mut">Cria o teu perfil em menos de um minuto: escolhes os teus clubes e como queres usar a app, e recebes 12 Moedas Flex para começar.</p></div>`;
  if(st===1)b=`<h1>Vamos conhecer-te</h1><div><label class="mut sm" for="obname">Como te chamas?</label><div class="search" style="margin-top:.4rem"><input id="obname" value="${E(s.name)}" maxlength="18" autocomplete="off"></div></div>
   <div class="mut sm">Escolhe os clubes que segues. Usamos isto para sugerir jogos.</div>
   <div class="pickgrid">${SF.TOP.map(id=>`<button class="pick ${s.favs.includes(id)?'on':''}" data-a="obfav" data-v="${id}">${SF.crest(id,'xs')}<span>${E(SF.TEAMS[id].n)}</span></button>`).join('')}</div>`;
@@ -15,7 +15,11 @@ SF.screens.onboarding=()=>{
   <button class="card ${s.ess?'':'dim'}" data-a="obmode" data-v="1" style="border-color:${s.ess?'var(--accent)':'var(--line)'}"><b style="font-size:1.1rem">Modo Essencial</b><div class="mut">Só os jogos do teu clube, botões grandes e comandos por voz. Pensado para quem quer simplicidade.</div></button>`;
  if(st===3)b=`<div style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:1rem"><div style="width:8rem;height:8rem;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe29a,var(--accent) 70%);display:grid;place-items:center;box-shadow:0 0 80px color-mix(in srgb,var(--accent) 60%,transparent)"><span class="big" style="font-size:3.6rem;color:#fff">12</span></div><h1>Oferta de boas-vindas</h1><p class="mut">12 Moedas Flex para começares. Chegam para um jogo grande e uns replays.</p></div>`;
  const last=st===3;
- return `<div class="ob">${b}<div class="dots">${[0,1,2,3].map(i=>`<i class="${i===st?'on':''}"></i>`).join('')}</div><button class="btn" data-a="obnext">${last?'Entrar na SportFlex':'Continuar'}</button></div>`};
+ const brand=`<aside class="ob-brand" aria-hidden="true"><div class="obb-in"><div class="logo" style="font-size:2.6rem"><b>//</b>SPORT FLEX</div><div class="obb-tag">O teu desporto, à tua medida</div>
+  <h2>Paga só pelo que <em>queres ver.</em></h2><p>Compra um jogo, um clube, uma competição ou uma modalidade. Sem mensalidades que não usas.</p>
+  <ul class="obb-list"><li><span class="ic">${I('ball')}</span>Packs por jogo, clube, competição ou modalidade</li><li><span class="ic">${I('users')}</span>Watch Party com videochamada e chat durante o jogo</li><li><span class="ic">${I('replay')}</span>Replay inteligente com só os momentos-chave</li><li><span class="ic">${I('cube')}</span>Realidade aumentada sobre o campo</li><li><span class="ic">${I('spark')}</span>Sugestões personalizadas para ti</li></ul>
+  <div class="obb-stats"><div><b>87%</b><span>acham as subscrições caras para o que veem</span></div><div><b>82%</b><span>querem ver jogos com amigos à distância</span></div></div></div></aside>`;
+ return `<div class="ob">${brand}<div class="ob-main">${b}<div class="dots">${[0,1,2,3].map(i=>`<i class="${i===st?'on':''}"></i>`).join('')}</div><button class="btn" data-a="obnext">${last?'Entrar na SportFlex':'Continuar'}</button></div></div>`};
 SF.act.obfav=el=>{const s=SF.st,v=el.dataset.v;s.favs=s.favs.includes(v)?s.favs.filter(x=>x!==v):[...s.favs,v];if(!s.favs.length)s.favs=[v];s.club=s.favs[0];SF.render()};
 SF.act.obmode=el=>{SF.st.ess=el.dataset.v==='1';SF.applyPrefs();SF.render()};
 SF.act.obnext=()=>{const s=SF.st;const n=SF.$('#obname');if(n&&n.value.trim())s.name=n.value.trim();
@@ -36,7 +40,7 @@ SF.hero=r=>{const g=r.g,h=SF.TEAMS[g.h],a=SF.TEAMS[g.a],ac=SF.access(g);
 SF.screens.home=()=>{
  const s=SF.st,lives=SF.GAMES.filter(g=>!g.done&&g.min<2880).slice(0,4);
  if(s.ess){const mine=SF.GAMES.filter(g=>!g.done&&([g.h,g.a].some(t=>s.favs.includes(t)))).slice(0,4);
-  return `<div class="top"><div><h1>${hello()}, ${E(s.name)}</h1><small>Modo Essencial · só o teu clube</small></div><button class="coinpill" data-a="tab" data-v="carteira" aria-label="Carteira Flex">${SF.coin}${s.coins}</button></div>
+  return `<div class="top"><div><h1>${hello()}, ${E(s.name)}</h1><small>Modo Essencial · só o teu clube</small></div><button class="coinpill" data-a="tab" data-v="carteira" aria-label="Carteira Flex">${SF.coin}<span data-count="coins">${s.coins}</span></button></div>
   <div class="col"><button class="btn" data-a="voice" style="min-height:4.4rem;font-size:1.2rem">${I('mic')}Falar com a SportFlex</button>
   <div class="h2"><h2 style="font-size:1.3rem">Os jogos do teu clube</h2></div>${mine.map(g=>SF.gameCard(g)).join('')||'<div class="card mut">Sem jogos marcados.</div>'}
   <button class="btn sec" data-a="tab" data-v="explorar">Ver todos os jogos</button></div>`}
@@ -44,7 +48,7 @@ SF.screens.home=()=>{
  const recs=SF.recs();
  const owned=[...s.packs.map(p=>({k:p.k,i:p.id})),...s.games.map(i=>({k:'jogo',i}))];
  const replays=SF.GAMES.filter(g=>g.done);
- return `<div class="top"><div class="logo"><b>//</b>SPORT FLEX<span class="tag" style="background:var(--bg3);margin-left:.4rem;font-size:.6rem;font-family:var(--ui)">DEMO</span></div><button class="coinpill" data-a="tab" data-v="carteira" aria-label="Carteira Flex: ${s.coins} moedas">${SF.coin}${s.coins}</button></div>
+ return `<div class="top"><div class="logo"><b>//</b>SPORT FLEX<span class="tag" style="background:var(--bg3);margin-left:.4rem;font-size:.6rem;font-family:var(--ui)">DEMO</span></div><button class="coinpill" data-a="tab" data-v="carteira" aria-label="Carteira Flex: ${s.coins} moedas">${SF.coin}<span data-count="coins">${s.coins}</span></button></div>
  <div class="col" style="gap:1rem">
  <div><div style="font-size:1.5rem;font-weight:700;letter-spacing:-.03em;line-height:1.15">${hello()}, ${E(s.name)}</div><div class="mut sm">${SF.GAMES.filter(g=>!g.done&&g.min<2880).length} jogos nas próximas 48 horas</div></div>
  <div><div class="h2" style="margin-top:0"><h2>${I('spark','')} Escolhidos para ti</h2></div><div class="strip" style="margin-top:.6rem">${recs.map(SF.hero).join('')}</div></div>
@@ -65,7 +69,7 @@ const exList=()=>{const {tab,q}=SF._ex,ql=q.trim().toLowerCase();let h='';
  if(tab==='mod')h=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem">`+Object.keys(SF.SPORTS).filter(id=>!ql||SF.SPORTS[id].n.toLowerCase().includes(ql)).map(id=>{const sp=SF.SPORTS[id],own=SF.has('mod',id);return `<button class="card" data-a="buy" data-k="mod" data-i="${id}" style="display:flex;flex-direction:column;gap:.6rem;min-height:8rem"><span class="ic">${I('ball')}</span><b>${sp.n}</b><span class="mut sm">Todas as competições</span><span class="price ${own?'own':''}" style="width:fit-content">${own?I('check')+'Tens':SF.coin+SF.cost('mod',id)}</span></button>`}).join('')+`</div>`;
  return h||'<div class="card mut" style="text-align:center">Nada encontrado. Experimenta outra pesquisa.</div>'};
 SF.screens.explorar=()=>{const e=SF._ex;
- return `<div class="top"><h1>${SF.st.ess?'Todos os jogos':'Explorar'}<small>Calendário real · instantâneo de ${SF.SNAPSHOT}</small></h1><button class="coinpill" data-a="tab" data-v="carteira" aria-label="Carteira Flex">${SF.coin}${SF.st.coins}</button></div>
+ return `<div class="top"><h1>${SF.st.ess?'Todos os jogos':'Explorar'}<small>Calendário real · instantâneo de ${SF.SNAPSHOT}</small></h1><button class="coinpill" data-a="tab" data-v="carteira" aria-label="Carteira Flex">${SF.coin}<span data-count="coins">${SF.st.coins}</span></button></div>
  <div class="col"><label class="search">${I('search')}<input id="exq" type="search" placeholder="Procurar jogo, clube ou competição" value="${E(e.q)}" aria-label="Procurar"></label>
  <div class="seg" role="tablist">${[['jogo','Jogo'],['equipa','Equipa'],['comp','Competição'],['mod','Modalidade']].map(t=>`<button role="tab" data-a="extab" data-v="${t[0]}" class="${e.tab===t[0]?'on':''}">${t[1]}</button>`).join('')}</div>
  <div class="mut sm">Pack ${{jogo:'Jogo: um jogo à escolha',equipa:'Clube: todos os jogos da equipa',comp:'Competição: a liga ou taça completa',mod:'Modalidade: todo o desporto'}[e.tab]}</div>
