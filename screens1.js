@@ -7,7 +7,7 @@ SF.screens.onboarding=()=>{
  if(st===0)b=`<div class="ob-welcome"><div class="logo" style="font-size:1.7rem"><b>//</b>SPORT FLEX</div><div class="mut" style="color:var(--accent);margin-top:-.8rem;font-weight:500">O teu desporto, à tua medida</div>
   <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:1.2rem"><h1>Paga só pelo que <em>queres ver.</em></h1><p class="mut">Compra um jogo, um clube, uma competição ou uma modalidade. Sem mensalidades que não usas.</p>
   <div class="chips"><span class="chip on">${I('ball')}Por jogo</span><span class="chip on">${I('shield')}Por clube</span><span class="chip on">${I('trophy')}Por competição</span><span class="chip on">${I('bolt')}Por modalidade</span></div></div></div><div class="ob-dw"><h1>Bem-vindo à SportFlex</h1><p class="mut">Cria o teu perfil em menos de um minuto: escolhes os teus clubes e como queres usar a app, e recebes 12 Moedas Flex para começar.</p></div>`;
- if(st===1)b=`<h1>Vamos conhecer-te</h1><div><label class="mut sm" for="obname">Como te chamas?</label><div class="search" style="margin-top:.4rem"><input id="obname" value="${E(s.name)}" maxlength="18" autocomplete="off"></div></div>
+ if(st===1)b=`<h1>Vamos conhecer-te</h1><div><label class="mut sm" for="obname">Como te chamas?</label><div class="search" style="margin-top:.4rem"><input id="obname" value="${E(SF._obName!==undefined?SF._obName:s.name)}" maxlength="18" autocomplete="off"></div></div>
   <div class="mut sm">Escolhe os clubes que segues. Usamos isto para sugerir jogos.</div>
   <div class="pickgrid">${SF.TOP.map(id=>`<button class="pick ${s.favs.includes(id)?'on':''}" data-a="obfav" data-v="${id}">${SF.crest(id,'xs')}<span>${E(SF.TEAMS[id].n)}</span></button>`).join('')}</div>`;
  if(st===2)b=`<h1>Como preferes <em>usar a app?</em></h1><p class="mut">Podes mudar isto quando quiseres no teu perfil.</p>
@@ -22,7 +22,8 @@ SF.screens.onboarding=()=>{
  return `<div class="ob">${brand}<div class="ob-main">${b}<div class="dots">${[0,1,2,3].map(i=>`<i class="${i===st?'on':''}"></i>`).join('')}</div><button class="btn" data-a="obnext">${last?'Entrar na SportFlex':'Continuar'}</button></div></div>`};
 SF.act.obfav=el=>{const s=SF.st,v=el.dataset.v;s.favs=s.favs.includes(v)?s.favs.filter(x=>x!==v):[...s.favs,v];if(!s.favs.length)s.favs=[v];s.club=s.favs[0];SF.render()};
 SF.act.obmode=el=>{SF.st.ess=el.dataset.v==='1';SF.applyPrefs();SF.render()};
-SF.act.obnext=()=>{const s=SF.st;const n=SF.$('#obname');if(n&&n.value.trim())s.name=n.value.trim();
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='obname')SF._obName=e.target.value});
+SF.act.obnext=()=>{const s=SF.st;const n=SF.$('#obname');const typed=(n?n.value:SF._obName);if(typed&&typed.trim())s.name=typed.trim();SF._obName=undefined;
  if(SF._ob<3){SF._ob++;SF.render();return}
  s.onboarded=true;s.sports=[...new Set(s.favs.map(f=>SF.TEAMS[f].sp))];SF.addTx('Oferta','Moedas de boas-vindas',12);SF.save();SF._ob=0;SF.go('home');SF.render()};
 /* ---------- Home ---------- */

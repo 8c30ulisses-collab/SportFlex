@@ -67,7 +67,7 @@ SF.PRIZES = [
 SF.BUNDLES = [
   {c:10,eur:'4,99 €',b:0},{c:25,eur:'9,99 €',b:5,pop:true},{c:60,eur:'19,99 €',b:20}
 ];
-SF.ACCENTS = ['#F4522D','#3D8BFF','#2FBF71','#8E5BFF','#F5B942'];
+SF.ACCENTS = ['#F4522D','#E5303C','#E8408F','#3D8BFF','#2FBF71','#8E5BFF','#F5B942'];
 
 // Emblemas oficiais (opcional). Quando houver autorização de um clube, junta o ficheiro à pasta crests/
 // e indica aqui o caminho, por exemplo: ben:'crests/ben.png'. Sem entrada, a app usa o escudo genérico.
