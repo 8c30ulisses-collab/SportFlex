@@ -3,7 +3,7 @@ const SF=window.SF;
 SF.$=(s,r)=>(r||document).querySelector(s);
 SF.$$=(s,r)=>[...(r||document).querySelectorAll(s)];
 SF.esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-SF.t0=Date.now();
+SF.t0=SF.t0||Date.now();
 const P={
  home:'<path d="M3 11l9-8 9 8v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/>',
  search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/>',
@@ -42,8 +42,8 @@ SF.crest=(id,cls)=>{const t=SF.TEAMS[id];if(SF.CRESTS&&SF.CRESTS[id])return `<im
 SF.coin='<i class="coin"></i>';
 /* estado */
 const KEY='sportflex-demo-v3';
-const def=()=>({onboarded:false,name:'João',coins:12,points:120,club:'ben',favs:['ben'],sports:['futebol'],ess:false,accent:'#F4522D',ts:0,
-  games:[],packs:[],tx:[],watched:[],disc:false,preds:{},predWin:0,invites:0,gifts:0,voted:{},notif:true,fun:{}});
+const def=()=>({onboarded:false,name:'',coins:12,points:120,club:'',favs:[],sports:['futebol'],ess:false,accent:'#F4522D',ts:0,
+  games:[],packs:[],tx:[],watched:[],disc:false,preds:{},predWin:0,invites:0,gifts:0,voted:{},notif:true,fun:{},nospoil:false,reveal:{},rem:{},remMin:15});
 SF.st=def();
 try{const s=localStorage.getItem(KEY);if(s)Object.assign(SF.st,JSON.parse(s))}catch(e){}
 SF.save=()=>{try{localStorage.setItem(KEY,JSON.stringify(SF.st))}catch(e){}};
@@ -54,9 +54,16 @@ SF.applyPrefs=()=>{const s=SF.st;document.documentElement.style.setProperty('--a
 /* tempo */
 const WD=['dom','seg','ter','qua','qui','sex','sáb'];
 const p2=n=>String(n).padStart(2,'0');
-SF.when=g=>{if(g.done)return g.lbl||'Terminou';const d=new Date(SF.t0+g.min*60000);const hh=p2(d.getHours())+':'+p2(d.getMinutes());
- if(g.min<60)return 'Daqui a '+Math.max(1,g.min)+' min';const today=new Date().getDate()===d.getDate()&&g.min<1440;if(today)return 'Hoje, '+hh;
- const tm=new Date(Date.now()+864e5);if(tm.getDate()===d.getDate()&&g.min<2880)return 'Amanhã, '+hh;return WD[d.getDay()]+' '+d.getDate()+'/'+p2(d.getMonth()+1)+', '+hh};
+const LX=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Lisbon',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',hourCycle:'h23'});
+/* data e hora de Lisboa para um timestamp (as horas dos jogos são sempre as de Lisboa) */
+SF.lx=ts=>{const o={};LX.formatToParts(new Date(ts)).forEach(p=>{o[p.type]=+p.value});return {y:o.year,m:o.month,d:o.day,hh:o.hour,mm:o.minute,wd:new Date(Date.UTC(o.year,o.month-1,o.day)).getUTCDay(),key:o.year*10000+o.month*100+o.day}};
+SF.ts=g=>SF.t0+g.min*60000;
+SF.hm=g=>{const l=SF.lx(SF.ts(g));return p2(l.hh)+':'+p2(l.mm)};
+SF.when=g=>{if(g.done)return g.lbl||'Terminou';const l=SF.lx(SF.ts(g)),hh=p2(l.hh)+':'+p2(l.mm);
+ if(g.min<60)return 'Daqui a '+Math.max(1,Math.round(g.min))+' min';const now=SF.lx(Date.now()),tm=SF.lx(Date.now()+864e5);
+ if(l.key===now.key)return 'Hoje, '+hh;if(l.key===tm.key)return 'Amanhã, '+hh;return WD[l.wd]+' '+l.d+'/'+p2(l.m)+', '+hh};
+SF.who=()=>SF.st.name||'Tu';
+SF.greet=()=>{const h=new Date().getHours();return (h<12?'Bom dia':h<20?'Boa tarde':'Boa noite')+(SF.st.name?', '+SF.st.name:'')};
 SF.game=id=>SF.GAMES.find(g=>g.id===id);
 SF.packLabel={clube:'Pack Clube',comp:'Pack Competição',mod:'Pack Modalidade',jogo:'Pack Jogo'};
 SF.packPrice=(k,id)=>k==='clube'?9:k==='comp'?SF.COMPS[id].price:k==='mod'?SF.SPORTS[id].price:SF.game(id).price;
@@ -72,32 +79,48 @@ SF.buy=(k,id)=>{const s=SF.st,c=SF.cost(k,id);
  if(k==='jogo')s.games.push(id);else s.packs.push({k,id});
  s.points+=10;SF.addTx(SF.packLabel[k],SF.packName(k,id),-c);SF.save();
  SF.toast(SF.packLabel[k]+' ativado. +10 pontos');SF.render();return true};
+/* condições dos packs (ilustrativas, para a demonstração) */
+SF.packInfo=(k,id)=>{const S=SF.SEASON,G=SF.GAMES,up=f=>G.filter(g=>!g.done&&f(g)).length,pl=n=>n+(n===1?' jogo':' jogos');
+ const rp='Replay completo e replay inteligente durante '+S.replay+' dias após cada jogo.',val='Até '+S.fim+' (fim da '+S.lbl+').';
+ if(k==='jogo'){const g=SF.game(id);return {escopo:'Este jogo ('+g.title+'), em direto e em replay, com Watch Party, chat, votações e realidade aumentada.',jogos:'1 jogo.',validade:g.done?'Replay disponível durante '+S.replay+' dias.':'Do início do jogo até '+S.replay+' dias depois do apito final.',replays:rp,excl:'Não inclui outros jogos nem outras competições.',curto:'este jogo + replay '+S.replay+' dias'}}
+ if(k==='clube'){const n=up(g=>g.h===id||g.a===id),nm=SF.TEAMS[id].n;return {escopo:'Todos os jogos do '+nm+' nas competições que existem na app.',jogos:(n?pl(n)+' marcados na app agora. ':'Ainda sem jogos marcados na app. ')+'Os jogos acrescentados até ao fim da época ficam incluídos.',validade:val,replays:rp,excl:'Não inclui jogos de seleções, competições que a app ainda não tem, nem os packs de outros clubes.',curto:'todos os jogos · '+S.lbl}}
+ if(k==='comp'){const c=SF.COMPS[id],n=up(g=>g.comp===id);return {escopo:'Todos os jogos da '+c.n+' ('+c.desc.toLowerCase()+').',jogos:n?pl(n)+' marcados na app agora. Os restantes ficam incluídos quando forem acrescentados.':'Ainda sem jogos na demonstração: o calendário desta competição entra em breve.',validade:val,replays:rp,excl:'Não inclui outras competições dos mesmos clubes.',curto:'toda a competição · '+S.lbl}}
+ const comps=Object.keys(SF.COMPS).filter(c=>SF.COMPS[c].sp===id),soma=comps.reduce((a,c)=>a+SF.COMPS[c].price,0),n=up(g=>g.sp===id);
+ return {escopo:'Todos os jogos de todas as competições de '+SF.SPORTS[id].n.toLowerCase()+' da app: '+comps.map(c=>SF.COMPS[c].n).join(', ')+'.',jogos:(n?pl(n)+' marcados na app agora. ':'')+'Equivale a '+comps.length+' packs de competição ('+soma+' moedas) por '+SF.SPORTS[id].price+'.',validade:val,replays:rp,excl:'Já inclui os packs de clube e de competição de '+SF.SPORTS[id].n.toLowerCase()+'. Não inclui jogos de seleções.',curto:'todas as competições · '+S.lbl}};
+SF.confirmPack=(k,id)=>{const s=SF.st,E=SF.esc;if(SF.has(k,id)){SF.toast('Já tens acesso a este pack');return}
+ const inf=SF.packInfo(k,id),c=SF.cost(k,id),row=(l,v)=>`<div class="pi"><b>${l}</b><span>${E(v)}</span></div>`;
+ SF.sheet(`<h3>${SF.packLabel[k]}</h3><div class="mut" style="margin-top:-.5rem">${E(SF.packName(k,id))}</div>
+ <div class="card pinfo">${row('Âmbito',inf.escopo)}${row('Jogos incluídos',inf.jogos)}${row('Validade',inf.validade)}${row('Replays',inf.replays)}${row('Exclusões',inf.excl)}</div>
+ <div class="mut sm">Condições ilustrativas desta demonstração. Nada é cobrado.</div>
+ <div class="row" style="justify-content:space-between"><span class="mut">Saldo: ${s.coins} moedas</span><b class="row" style="gap:.3rem">${SF.coin}${c} Flex${s.disc?' <span class="tag ok" style="margin-left:.3rem">-20%</span>':''}</b></div>
+ <button class="btn" data-a="buyok" data-k="${k}" data-i="${id}">${c>s.coins?'Comprar moedas':'Confirmar por '+c+' moedas'}</button><button class="btn ghost" data-a="pcancel">Cancelar</button>`)};
 /* UI base */
 SF.toast=m=>{const t=SF.$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(SF._tt);SF._tt=setTimeout(()=>t.classList.remove('show'),2300)};
 SF.sheet=(html,o)=>{o=o||{};SF.$('#layer').innerHTML=`<div class="sheetwrap"><div class="scrim" data-a="close"></div><div class="sheet ${o.full?'full':''}" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div></div>`;SF.sheetOpen=true};
 SF.reduced=()=>{try{return matchMedia('(prefers-reduced-motion:reduce)').matches}catch(e){return false}};
-SF.close=()=>{const L=SF.$('#layer'),w=L.firstElementChild;
+SF.close=()=>{SF._curGame=null;const L=SF.$('#layer'),w=L.firstElementChild;
  if(w&&w.classList.contains('sheetwrap')&&!w.classList.contains('out')&&!SF.reduced()){w.classList.add('out');w.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));w.querySelectorAll('button,input,textarea').forEach(e=>{e.tabIndex=-1;e.removeAttribute('data-a');e.removeAttribute('data-enter')});setTimeout(()=>{if(w.parentNode)w.remove()},240)}else L.innerHTML='';
  SF.sheetOpen=false;SF._onclose&&SF._onclose();SF._onclose=null};
 SF.go=r=>{location.hash=r};
 SF.route=()=>{const h=(location.hash||'#home').slice(1);const i=h.indexOf('-');return i<0?{n:h,a:''}:{n:h.slice(0,i),a:h.slice(i+1)}};
 SF.act={};
 SF.gameCard=(g,o)=>{o=o||{};const ac=SF.access(g);const live=g.live;
- const mid=live||g.done?`<span class="sc">${g.hs} - ${g.as}</span>`:'';
+ const mid=live?`<span class="sc">${g.hs} - ${g.as}</span>`:g.done?`<span class="sc" ${SF.hidden(g)?'aria-label="Resultado oculto"':''}>${SF.score(g)}</span>`:'';
  return `<button class="g" data-a="game" data-v="${g.id}"><span class="pair">${SF.crest(g.h)}${SF.crest(g.a)}</span><span class="tt"><b>${SF.esc(g.title)}</b><span>${live?'<span style="color:var(--accent2);font-weight:700">Ao vivo</span>':SF.when(g)} · ${SF.COMPS[g.comp].n}</span>${mid?'<span style="color:var(--fg)">'+mid+'</span>':''}</span>${ac?`<span class="price own">${SF.icon('check')}Tens</span>`:`<span class="price">${SF.coin}${SF.cost('jogo',g.id)}</span>`}</button>`};
 /* detalhe do jogo (folha) */
 SF.act.game=el=>{SF.openGame(el.dataset.v)};
-SF.openGame=id=>{const g=SF.game(id),ac=SF.access(g);const T=SF.TEAMS;
+SF.openGame=id=>{const g=SF.game(id),ac=SF.access(g);const T=SF.TEAMS;SF._curGame=id;
  const packs=[['clube',g.h],['clube',g.a],['comp',g.comp],['mod',g.sp]];
- const opts=packs.map(([k,i])=>{const own=SF.has(k,i);return `<button class="li" data-a="buy" data-k="${k}" data-i="${i}" ${own?'disabled':''}><span class="ic">${SF.icon(k==='clube'?'shield':k==='comp'?'trophy':'ball')}</span><span class="grow"><b style="font-weight:600">${SF.packLabel[k]}</b><br><span class="mut sm">${SF.esc(SF.packName(k,i))}${k==='clube'?' · todos os jogos':''}</span></span>${own?`<span class="price own">${SF.icon('check')}Tens</span>`:`<span class="price">${SF.coin}${SF.cost(k,i)}</span>`}</button>`}).join('');
- SF.sheet(`<div class="row" style="justify-content:center;gap:1.2rem;padding-top:.3rem"><div style="text-align:center">${SF.crest(g.h,'lg')}<div class="sm" style="margin-top:.3rem;font-weight:600">${T[g.h].n}</div></div><div style="text-align:center">${g.live||g.done?`<div class="big" style="font-size:2.4rem">${g.hs} - ${g.as}</div>`:`<div class="big mut" style="font-size:1.8rem">VS</div>`}<div class="sm mut">${SF.when(g)}</div></div><div style="text-align:center">${SF.crest(g.a,'lg')}<div class="sm" style="margin-top:.3rem;font-weight:600">${T[g.a].n}</div></div></div>
- <div class="mut sm" style="text-align:center">${SF.COMPS[g.comp].n} · ${SF.SPORTS[g.sp].n}</div>
- ${ac?`<button class="btn" data-a="watch" data-v="${g.id}">${SF.icon('play')}${g.live?'Ver ao vivo':g.done?'Ver replay':'Abrir jogo'}</button>`:`<button class="btn" data-a="buy" data-k="jogo" data-i="${g.id}">${SF.coin}Comprar Pack Jogo · ${SF.cost('jogo',g.id)} Flex</button>`}
- <div class="row"><button class="btn sec grow" data-a="giftgame" data-v="${g.id}">${SF.icon('gift')}Enviar a um amigo</button><button class="btn sec grow" data-a="notify" data-v="${g.id}">${SF.icon('bell')}Lembrar-me</button></div>
+ const opts=packs.map(([k,i])=>{const own=SF.has(k,i);return `<button class="li" data-a="buy" data-k="${k}" data-i="${i}" ${own?'disabled':''}><span class="ic">${SF.icon(k==='clube'?'shield':k==='comp'?'trophy':'ball')}</span><span class="grow"><b style="font-weight:600">${SF.packLabel[k]}</b><br><span class="mut sm">${SF.esc(SF.packName(k,i))} · ${SF.packInfo(k,i).curto}</span></span>${own?`<span class="price own">${SF.icon('check')}Tens</span>`:`<span class="price">${SF.coin}${SF.cost(k,i)}</span>`}</button>`}).join('');
+ SF.sheet(`<div class="row" style="justify-content:center;gap:1.2rem;padding-top:.3rem"><div style="text-align:center">${SF.crest(g.h,'lg')}<div class="sm" style="margin-top:.3rem;font-weight:600">${T[g.h].n}</div></div><div style="text-align:center">${g.live?`<div class="big" style="font-size:2.4rem">${g.hs} - ${g.as}</div>`:g.done?`<div class="big" style="font-size:2.4rem" ${SF.hidden(g)?'aria-label="Resultado oculto"':''}>${SF.score(g)}</div>`:`<div class="big mut" style="font-size:1.8rem">VS</div>`}<div class="sm mut">${SF.when(g)}</div></div><div style="text-align:center">${SF.crest(g.a,'lg')}<div class="sm" style="margin-top:.3rem;font-weight:600">${T[g.a].n}</div></div></div>
+ <div class="mut sm" style="text-align:center">${SF.COMPS[g.comp].n} · ${SF.SPORTS[g.sp].n} · horas de Lisboa</div>${SF.hidden(g)?`<div class="row" style="justify-content:center"><span class="mut sm">Resultado oculto (modo sem spoilers)</span><button class="btn sm sec" data-a="reveal" data-v="${g.id}">${SF.icon('eye')}Revelar</button></div>`:''}
+ ${ac?`<button class="btn" data-a="watch" data-v="${g.id}">${SF.icon('play')}${g.live?'Ver ao vivo':g.done?(SF.hidden(g)?'Ver replay sem spoilers':'Ver replay'):'Abrir jogo'}</button>`:`<button class="btn" data-a="buy" data-k="jogo" data-i="${g.id}">${SF.coin}Comprar Pack Jogo · ${SF.cost('jogo',g.id)} Flex</button><div class="mut sm" style="text-align:center;margin-top:-.4rem">Este jogo, em direto e replay durante ${SF.SEASON.replay} dias.</div>`}
+ <div class="row"><button class="btn sec grow" data-a="giftgame" data-v="${g.id}">${SF.icon('gift')}Enviar a um amigo</button>${g.done?'':`<button class="btn sec grow" data-a="notify" data-v="${g.id}">${SF.icon('bell')}${(SF.st.rem||{})[g.id]?'Lembrete: '+SF.st.rem[g.id].m+' min antes':'Lembrar-me'}</button>`}</div>
  <h3 style="font-size:.95rem;margin-top:.3rem">Ou poupa com um pack maior</h3><div class="list">${opts}</div>${SF.st.disc?'<div class="sm" style="color:var(--ok)">Desconto de 20% aplicado na próxima compra.</div>':''}`)};
 SF.act.watch=el=>{SF.close();SF.go('jogo-'+el.dataset.v)};
-SF.act.buy=el=>{const k=el.dataset.k,i=el.dataset.i;const ok=SF.buy(k,i);if(ok&&SF.sheetOpen){const g=k==='jogo'?SF.game(i):null;if(g)SF.openGame(g.id);else SF.close()}};
-SF.act.notify=el=>{SF.st.fun.n=(SF.st.fun.n||0)+1;SF.save();SF.toast('Aviso ativado. Vais receber um alerta antes do jogo')};
+SF.act.buy=el=>SF.confirmPack(el.dataset.k,el.dataset.i);
+SF.act.buyok=el=>{const ok=SF.buy(el.dataset.k,el.dataset.i);if(ok){if(SF._curGame)SF.openGame(SF._curGame);else SF.close()}};
+SF.act.pcancel=()=>{if(SF._curGame)SF.openGame(SF._curGame);else SF.close()};
 SF.act.close=()=>SF.close();
 SF.act.back=()=>{history.length>1?history.back():SF.go('home')};
 SF.act.tab=el=>SF.go(el.dataset.v);
@@ -113,13 +136,13 @@ SF.render=()=>{
  const old=SF.$('#view');const key=r.n+'-'+r.a;const same=old&&SF._lastRoute===key;const sc=same?old.scrollTop:0;
  const fresh=SF._lastRoute!==key||(SF._enterKey===key&&Date.now()-SF._enterAt<300);const changed=fresh&&!SF.reduced();if(changed&&SF._lastRoute!==key){SF._enterKey=key;SF._enterAt=Date.now()}const prevN=(SF._lastRoute||'').split('-')[0];
  SF._lastRoute=key;
- const ORD=['home','explorar','premios','perfil'],DEEP=['jogo','carteira'];
+ const ORD=['home','explorar','premios','perfil'],DEEP=['jogo','carteira','jogos','comparar'];
  let dir='up';if(DEEP.includes(r.n))dir='deep';else if(DEEP.includes(prevN))dir='back';else if(ORD.includes(prevN)&&ORD.includes(r.n))dir=ORD.indexOf(r.n)>ORD.indexOf(prevN)?'fwd':'back';
  const fn=SF.screens[r.n]||SF.screens.home;
  if(r.n!=='jogo')SF.player&&SF.player.stop();
  const body=fn(r.a);
  const tabs=s.ess?[['home','home','Início'],['explorar','ball','Jogos'],['perfil','user','Perfil']]:[['home','home','Home'],['explorar','search','Explorar'],['premios','trophy','Prémios'],['perfil','user','Perfil']];
- const cur=['home','explorar','premios','perfil'].includes(r.n)?r.n:(r.n==='carteira'?'perfil':'explorar');
+ const cur=['home','explorar','premios','perfil'].includes(r.n)?r.n:(r.n==='carteira'?'perfil':r.n==='jogos'?'home':'explorar');
  const showNav=r.n!=='jogo';
  app.innerHTML=`<main class="view ${changed?'enter':''}" data-dir="${dir}" id="view"><div class="wrap">${body}</div></main>${showNav?`<nav class="nav ${changed?'enter':''}" aria-label="Navegação principal"><button class="rail-logo ${cur==='home'?'on':''}" data-a="tab" data-v="home" aria-label="SportFlex, início"><b>//</b><span>SPORT FLEX</span></button>${tabs.map(t=>`<button data-a="tab" data-v="${t[0]}" class="${cur===t[0]?'on':''}" ${cur===t[0]?'aria-current="page"':''}>${SF.icon(t[1])}<span>${t[2]}</span></button>`).join('')}</nav>`:''}${(r.n==='home'||r.n==='explorar')?`<button class="fab" data-a="assistant" aria-label="Assistente SportFlex">${SF.icon('spark')}</button>`:''}`;
  const v=SF.$('#view');if(sc)v.scrollTop=sc;

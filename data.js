@@ -2,6 +2,9 @@
 // jornada 11 de La Liga e jornada 4 da Champions League). Não se atualiza sozinho.
 window.SF = window.SF || {};
 SF.SNAPSHOT = '5 nov 2026';
+SF.t0 = Date.now();
+SF.DATA_LBL = 'Dados de demonstração · atualização de 5/11/2026';
+SF.SEASON = {fim:'30 jun 2027',lbl:'época 2026/27',replay:30};
 const T=(n,s,c0,c1,sp)=>({n,s,c:[c0,c1],sp:sp||'futebol'});
 SF.TEAMS = {
   ben:T('Benfica','SLB','#E30613','#6b0008'),spo:T('Sporting CP','SCP','#00924A','#03381f'),por:T('FC Porto','FCP','#1E5BC6','#0a2557'),bra:T('SC Braga','SCB','#D7263D','#5a0f1a'),
@@ -20,7 +23,8 @@ SF.TEAMS = {
 };
 // Clubes mostrados no onboarding
 SF.TOP = ['ben','spo','por','bra','rma','fcb','atm','bay','psg','int','mun','mci','liv','ars'];
-SF.SPORTS = { futebol:{n:'Futebol',price:12} };
+// Pack Modalidade = todas as competições de futebol da app. Custa mais do que qualquer pack de competição.
+SF.SPORTS = { futebol:{n:'Futebol',price:45} };
 SF.COMPS = {
   liga:{n:'Liga Portugal',sp:'futebol',price:15,desc:'34 jornadas'},
   ucl:{n:'UEFA Champions League',sp:'futebol',price:18,desc:'Fase de liga e eliminatórias'},
@@ -30,7 +34,7 @@ SF.COMPS = {
   bund:{n:'Bundesliga',sp:'futebol',price:12,desc:'34 jornadas'},
   lig1:{n:'Ligue 1',sp:'futebol',price:10,desc:'34 jornadas'}
 };
-// at = data e hora de Lisboa (em novembro, UTC+0). lbl = etiqueta para jogos já realizados.
+// at = data e hora de Lisboa. Em novembro Lisboa está em UTC+0, por isso o valor é tratado como UTC; para datas no horário de verão (a partir de 29 mar 2027) seria preciso acrescentar o desvio. lbl = etiqueta para jogos já realizados.
 const G=(id,comp,h,a,at,price,o)=>Object.assign({id,sp:'futebol',comp,h,a,at,price,title:SF.TEAMS[h].n+' vs '+SF.TEAMS[a].n},o||{});
 const R=(id,comp,h,a,hs,as,lbl,ord)=>({id,sp:'futebol',comp,h,a,done:true,hs,as,price:1,lbl,ord,title:SF.TEAMS[h].n+' vs '+SF.TEAMS[a].n});
 SF.GAMES = [
@@ -43,7 +47,7 @@ SF.GAMES = [
   R('u4','ucl','sha','spo',0,1,'Champions League · 4 nov',6),R('u5','ucl','fey','int',0,3,'Champions League · 4 nov',5),R('u6','ucl','mun','rom',3,2,'Champions League · 4 nov',4),
   R('d1','lali','rac','rma',0,3,'La Liga · jornada 11',3),R('d2','lali','fcb','ala',6,1,'La Liga · jornada 11',2),R('d3','lali','lev','atm',0,2,'La Liga · jornada 11',1),R('d4','lali','ath','rso',2,1,'La Liga · jornada 11',0)
 ];
-SF.GAMES.forEach(g=>{g.min=g.at?Math.round((Date.UTC(+g.at.slice(0,4),+g.at.slice(5,7)-1,+g.at.slice(8,10),+g.at.slice(11,13),+g.at.slice(14,16))-Date.now())/60000):-1000-g.ord*60});
+SF.GAMES.forEach(g=>{g.min=g.at?(Date.UTC(+g.at.slice(0,4),+g.at.slice(5,7)-1,+g.at.slice(8,10),+g.at.slice(11,13),+g.at.slice(14,16))-SF.t0)/60000:-1000-g.ord*60});
 SF.GAMES.sort((a,b)=>a.done===b.done?(a.done?b.min-a.min:a.min-b.min):(a.done?1:-1));
 // Momentos ilustrativos derivados do resultado final (os minutos reais não fazem parte dos dados recolhidos).
 SF.moments=g=>{if(!g.done)return [];const T=SF.TEAMS,out=[];let n=0;const L=[];for(let i=0;i<g.hs;i++)L.push(g.h);for(let i=0;i<g.as;i++)L.push(g.a);

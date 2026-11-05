@@ -1,7 +1,7 @@
 // Service worker simples: guarda a app no telemóvel para abrir mais depressa e funcionar sem rede.
 // Ao mudar ficheiros da app, aumenta o número da versão para os telemóveis atualizarem.
-const V='sportflex-v9';
-const SHELL=['./','index.html','styles.css','data.js','core.js','screens1.js','desk.js','player.js','screens2.js','boot.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png'];
+const V='sportflex-v12';
+const SHELL=['./','index.html','styles.css','data.js','core.js','screens1.js','desk.js','player.js','ai.js','screens2.js','features.js','boot.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{

@@ -14,7 +14,7 @@ function init(id){
  const g=SF.game(id),sp=g.sp;
  const p=P.p={id,g,sp,min:0,live:false,sim:false,q:3,secs:492,hs:g.hs||0,as:g.as||0,over:false,
   home:FORM[sp].map((b,i)=>({b,ph:rnd(0,6.3),i})),away:FORM[sp].map((b,i)=>({b:[1-b[0],b[1]],ph:rnd(0,6.3),i})),
-  ball:{x:.5,y:.5,tx:.5,ty:.5,next:0},flash:0,flashTxt:'',events:[],chat:[],party:{on:false,members:[],mic:true,cam:true},
+  ball:{x:.5,y:.5,tx:.5,ty:.5,next:0},flash:0,flashTxt:'',events:[],chat:[],party:{on:false,members:[],mic:true,cam:true,auto:false,host:'',lag:{me:0}},
   polls:[{q:'Quem marca a seguir?',o:[g.h,g.a,null],v:[38,29,33]},{q:'Melhor em campo',o:['Avançado do '+SF.TEAMS[g.h].n,'Médio do '+SF.TEAMS[g.a].n,'Guarda-redes'],v:[44,31,25]}],
   tab:SF._tab||(g.done?'replay':'live'),ar:false,rep:null,stats:{pos:54,sh:[9,6],pa:[312,268],km:[58,61]},trail:[]};
  SF._tab=null;
@@ -60,17 +60,27 @@ function setMoms(){const el=SF.$('#moms');if(el)el.innerHTML=momsHtml()}
 const MOMS=p=>SF.moments(p.g);
 function momsHtml(){const p=P.p,ms=MOMS(p);return ms.map((m,i)=>`<button class="mom ${p.rep&&p.rep.label&&p.rep.label.indexOf(m.d)>-1?'on':''}" data-a="mom" data-v="${i}"><b>${m.m}${typeof m.m==='number'?"'":''}</b>${E(m.t)}</button>`).join('')}
 /* HUD */
-function hud(){const p=P.p,g=p.g,T=SF.TEAMS;const live=p.live&&!p.over;
- const clock=g.done||p.over?'Fim':p.live?(p.sp==='futebol'?p.min+"'":p.sp==='basquetebol'?`Q${p.q} ${String(Math.floor(p.secs/60)).padStart(2,'0')}:${String(Math.floor(p.secs%60)).padStart(2,'0')}`:'Ao vivo'):SF.when(g);
- return `<div class="t">${SF.crest(g.h,'xs')}<span>${E(T[g.h].s)}</span></div><div class="mid"><div class="sc">${p.live||g.done?p.hs+' - '+p.as:'VS'}</div><small>${clock}</small></div><div class="t r">${SF.crest(g.a,'xs')}<span>${E(T[g.a].s)}</span></div>`}
+function hud(){const p=P.p,g=p.g,T=SF.TEAMS;const live=p.live&&!p.over,hid=SF.hidden(g)&&!p.rs;
+ const clock=hid?'Resultado oculto':p.rs&&!p.over?p.min+"'":g.done||p.over?'Fim':p.live?(p.sp==='futebol'?p.min+"'":p.sp==='basquetebol'?`Q${p.q} ${String(Math.floor(p.secs/60)).padStart(2,'0')}:${String(Math.floor(p.secs%60)).padStart(2,'0')}`:'Ao vivo'):SF.when(g);
+ return `<div class="t">${SF.crest(g.h,'xs')}<span>${E(T[g.h].s)}</span></div><div class="mid"><div class="sc">${hid?'? - ?':p.live||g.done?p.hs+' - '+p.as:'VS'}</div><small>${clock}</small></div><div class="t r">${SF.crest(g.a,'xs')}<span>${E(T[g.a].s)}</span></div>`}
 function refreshHud(){const h=SF.$('#sb');if(h)h.innerHTML=hud();const f=SF.$('#evs');if(f&&P.p.tab==='live')f.innerHTML=evHtml()}
 const evHtml=()=>{const p=P.p;return p.events.length?p.events.slice(0,6).map(e=>`<div class="ev"><b>${E(e.m)}</b><span>${E(e.txt)}</span></div>`).join(''):'<div class="mut sm">Os acontecimentos do jogo aparecem aqui.</div>'};
 function addChat(n,t){P.p.chat.push({n,t});P.p.chat=P.p.chat.slice(-40);const m=SF.$('#msgs');if(m){m.innerHTML=chatHtml();m.scrollTop=m.scrollHeight}}
-function goal(side){const p=P.p,g=p.g;const tm=SF.TEAMS[side?g.a:g.h];if(side)p.as++;else p.hs++;p.flash=1.6;p.flashSide=side?0:1;p.flashTxt='GOLO';p.flashSub=tm.n;
+function goalNow(side){const p=P.p,g=p.g;const tm=SF.TEAMS[side?g.a:g.h];if(side)p.as++;else p.hs++;p.flash=1.6;p.flashSide=side?0:1;p.flashTxt='GOLO';p.flashSub=tm.n;
  p.events.unshift({m:p.min+"'",txt:'Golo do '+tm.n,t:'Golo'});SF.toast('Golo do '+tm.n+' (simulação)');
  if(p.party.on||true){const f=pick(SF.FRIENDS);setTimeout(()=>addChat(f.n,pick(BOT[f.id])),900)}}
+/* sem sincronização, um amigo mais adiantado reage ao golo antes de o veres */
+function goal(side){const p=P.p,pa=p.party;
+ if(pa.on&&!pa.auto){const ahead=pa.members.filter(id=>pa.lag[id]<pa.lag.me).sort((a,b)=>pa.lag[a]-pa.lag[b])[0];
+  if(ahead){const d=Math.max(1,Math.min(8,pa.lag.me-pa.lag[ahead])),f=SF.FRIENDS.find(x=>x.id===ahead);addChat(f.n,'GOLOOOO! 🎉');SF.toast(f.n+' reagiu '+d+' s antes de ti. Ativa a sincronização.');setTimeout(()=>{if(P.p===p)goalNow(side)},d*1000);return}}
+ goalNow(side)}
+function sched(g){const L=[];for(let i=0;i<g.hs;i++)L.push(0);for(let i=0;i<g.as;i++)L.push(1);let h=0;for(const c of g.id)h=(h*31+c.charCodeAt(0))%97;const S={},used={};
+ L.forEach((side,i)=>{let m=6+((h+i*29)%82);while(used[m])m=m%88+1;used[m]=1;(S[m]=S[m]||[]).push(side)});return S}
+/* replay desde o início: avança 5 minutos por passo e marca os golos do resultado real */
+function replayStep(p){for(let i=0;i<5&&!p.over;i++){p.min++;(p.sched[p.min]||[]).forEach(sd=>goalNow(sd));if(p.min>=90){p.over=true;p.events.unshift({m:"90'",txt:'Fim do jogo',t:'Fim'});SF.st.reveal[p.g.id]=true;SF.save();SF.toast('Fim do replay. Resultado: '+p.g.hs+'-'+p.g.as)}}}
 function step(){const p=P.p;if(!p)return;const g=p.g;
- if(p.live&&!p.over){
+ if(p.rs&&p.live&&!p.over){replayStep(p)}
+ else if(p.live&&!p.over){
   if(p.sp==='futebol'){p.min++;if(Math.random()<.2)goal(Math.random()<.5?1:0);else if(Math.random()<.4){const tm=SF.TEAMS[pick([g.h,g.a])];p.events.unshift({m:p.min+"'",txt:pick(['Remate perigoso do ','Canto para o ','Falta a favor do ','Defesa difícil perante o '])+tm.n,t:'Lance'})}
    if(p.min>=90){p.over=true;p.events.unshift({m:'90\'',txt:'Fim do jogo',t:'Fim'})}}
   else if(p.sp==='basquetebol'){p.secs-=22;if(p.secs<=0){p.q++;p.secs=600;if(p.q>4){p.over=true;p.q=4;p.secs=0}}
@@ -78,39 +88,58 @@ function step(){const p=P.p;if(!p)return;const g=p.g;
  p.stats.pos=Math.max(40,Math.min(64,p.stats.pos+Math.round(rnd(-2,2))));if(Math.random()<.4)p.stats.sh[Math.random()<.5?0:1]++;p.stats.km[0]+=Math.round(rnd(0,2));p.stats.km[1]+=Math.round(rnd(0,2));p.stats.pa[0]+=Math.round(rnd(0,4));p.stats.pa[1]+=Math.round(rnd(0,4));
  p.polls.forEach(po=>{const k=Math.floor(Math.random()*3);po.v[k]+=Math.random()<.5?1:0});
  if(p.party.on&&Math.random()<.5){p.party.talk=pick(p.party.members.concat(['x']))}
+ if(p.party.on&&!p.party.auto){const L=p.party.lag,r=Math.random();if(r<.35)L.me=Math.min(12,L.me+1);else if(r<.45)L.me=Math.max(0,L.me-1)}
+ if(p.tab==='party'){const sb=SF.$('#syncbox');if(sb)sb.innerHTML=syncHtml()}
  refreshHud();if(p.tab==='vote')SF.$('#ptab')&&(SF.$('#ptab').innerHTML=tabHtml());if(p.tab==='ar'||p.tab==='live'){const st=SF.$('#stats');if(st)st.innerHTML=statsHtml()}
  if(p.tab==='party'){const t=SF.$('#tiles');if(t)t.innerHTML=tilesHtml()}}
+P.step=step;P.goal=(s)=>goal(s);
 /* tabs */
 const bar=(l,a,b)=>{const s=a+b||1;return `<div><div class="row sm" style="justify-content:space-between"><b>${a}</b><span class="mut">${l}</span><b>${b}</b></div><div class="bar" style="margin-top:.2rem;display:flex;gap:2px"><i style="width:${a/s*100}%;background:${SF.TEAMS[P.p.g.h].c[0]}"></i><i style="width:${b/s*100}%;background:${SF.TEAMS[P.p.g.a].c[0]}"></i></div></div>`};
 const statsHtml=()=>{const s=P.p.stats;return `<div class="col" style="gap:.6rem">${bar('Posse de bola %',s.pos,100-s.pos)}${bar('Remates',s.sh[0],s.sh[1])}${bar('Passes',s.pa[0],s.pa[1])}${bar('Distância (km)',s.km[0],s.km[1])}</div>`};
 const chatHtml=()=>P.p.chat.map(m=>`<div class="m ${m.me?'me':''}"><small>${E(m.n)}</small>${E(m.t)}</div>`).join('');
-const tilesHtml=()=>{const pa=P.p.party;const me=`<div class="tile" style="background:linear-gradient(135deg,${SF.st.accent},#5a1708)"><span>${E(SF.st.name)} (tu)</span></div>`;
+const tilesHtml=()=>{const pa=P.p.party;const me=`<div class="tile" style="background:linear-gradient(135deg,${SF.st.accent},#5a1708)"><span>${E(SF.who())} (tu)</span></div>`;
  const fr=pa.members.map(id=>{const f=SF.FRIENDS.find(x=>x.id===id);return `<div class="tile ${pa.talk===id?'talk':''}" style="background:linear-gradient(135deg,${f.c[0]},${f.c[1]})"><span>${pa.talk===id?I('mic'):''}${f.n}</span></div>`}).join('');
  const add=pa.members.length<4?`<button class="tile add" data-a="invite" aria-label="Convidar amigo">${I('plus')}</button>`:'';return me+fr+add};
+const DEFLAG={ines:2,rui:3,miguel:5,carla:9};
+function syncHtml(){const p=P.p,pa=p.party,L=pa.lag,host=SF.FRIENDS.find(f=>f.id===pa.host)||SF.FRIENDS[0],me=pa.auto?0:L.me;
+ const lab=s=>s<=0?'<span style="color:var(--ok)">em sincronia</span>':s+' s atrás';
+ const row=(n,s,h)=>`<div class="syr"><span class="sn">${E(n)}${h?' <small class="mut">anfitrião</small>':''}</span><span class="bar" style="flex:1"><i style="width:${Math.min(12,s)/12*100}%;background:${s<=0?'var(--ok)':'var(--warn)'}"></i></span><span class="sm" style="min-width:5.4rem;text-align:right">${lab(s)}</span></div>`;
+ const ahead=pa.members.filter(id=>!pa.auto&&(L[id]||0)<me);
+ return `<div class="mut sm">Sincronização</div>${row('Tu',me,false)}${pa.members.map(id=>row(SF.FRIENDS.find(f=>f.id===id).n,pa.auto?0:(L[id]||0),id===pa.host)).join('')}
+ <div class="sm" role="status" style="margin-top:.2rem">${me>0?`Estás ${me} s atrás de ${E(host.n)}.${ahead.length?' Um amigo pode reagir a um golo antes de ti.':''}`:`Estás no mesmo momento de ${E(host.n)}${pa.auto?' (sincronização automática)':''}.`}</div>
+ <button class="btn sec sm" data-a="syncnow" ${me>0?'':'disabled'}>${I('replay')}Voltar ao momento de ${E(host.n)}</button>`}
 function tabHtml(){const p=P.p,g=p.g,ac=SF.access(g),t=p.tab;
  if(!ac&&t!=='live')return `<div class="card" style="text-align:center;display:flex;flex-direction:column;gap:.7rem;align-items:center">${I('lock')}<b>Esta funcionalidade faz parte do pack</b><span class="mut sm">Compra o jogo para ativar chat, votações, AR e replays.</span><button class="btn" data-a="game" data-v="${g.id}">${SF.coin}Ver packs</button></div>`;
  if(t==='live')return `${(!g.done&&!p.live)?`<div class="card col"><b>Simular transmissão</b><span class="mut sm">O jogo ainda não começou e a demonstração não tem vídeo real. Simula a transmissão para experimentares o campo, a Watch Party, as votações, a AR e os replays.</span><button class="btn" data-a="sim">${I('play')}Simular jogo ao vivo</button></div>`:''}<div class="card"><b style="font-size:.95rem">Estatísticas</b><div style="margin-top:.7rem" id="stats">${statsHtml()}</div></div><div class="card"><b style="font-size:.95rem">Acontecimentos</b><div class="feed" id="evs" style="margin-top:.7rem">${evHtml()}</div></div>`;
  if(t==='party'){const pa=p.party;if(!pa.on)return `<div class="card col"><b>Watch Party</b><span class="mut sm">Vê o jogo com amigos à distância, com videochamada e reações em tempo real.</span><div class="list">${SF.FRIENDS.map(f=>`<div class="li"><span class="av" style="background:linear-gradient(135deg,${f.c[0]},${f.c[1]})">${f.n[0]}</span><b class="grow" style="font-weight:600">${f.n}</b><button class="btn sm ${pa.members.includes(f.id)?'sec':''}" data-a="invite" data-v="${f.id}">${pa.members.includes(f.id)?'Convidado':'Convidar'}</button></div>`).join('')}</div><button class="btn" data-a="startparty">${I('users')}Iniciar Watch Party</button></div>`;
   return `<div class="card col"><div class="row"><b class="grow">Watch Party ativa</b><span class="tag live" style="color:#fff"><i class="dot"></i>${pa.members.length+1} pessoas</span></div><div class="tiles" id="tiles">${tilesHtml()}</div>
+  <div class="syncbox col" id="syncbox" style="gap:.45rem">${syncHtml()}</div>
+  <div class="li" style="padding:.2rem 0;background:none;border:0"><span class="grow"><b style="font-weight:600">Sincronização automática</b><div class="mut sm">Todos veem o mesmo instante e as reações só chegam depois do lance. Demonstração: os atrasos são simulados.</div></span><button class="sw ${pa.auto?'on':''}" data-a="syncauto" role="switch" aria-checked="${pa.auto}" aria-label="Sincronização automática"></button></div>
   <div class="row"><button class="btn sec sm grow" data-a="mic">${I('mic')}${pa.mic?'Microfone ligado':'Microfone desligado'}</button><button class="btn sec sm grow" data-a="cam">${I('eye')}${pa.cam?'Câmara ligada':'Câmara desligada'}</button></div>
   <div class="row" style="justify-content:space-between">${['Golo','Uau','Palmas','Ai'].map(r=>`<button class="btn sec sm" data-a="react" data-v="${r}">${r}</button>`).join('')}</div><button class="btn ghost sm" data-a="endparty">Terminar</button></div>`}
  if(t==='chat')return `<div class="card col"><div class="msgs" id="msgs">${chatHtml()}</div><div class="inp"><input id="cin" placeholder="Escreve uma mensagem" data-enter="sendchat" aria-label="Mensagem"><button class="btn sm" data-a="sendchat" aria-label="Enviar">${I('send')}</button></div></div>`;
  if(t==='vote')return p.polls.map((po,pi)=>{const tot=po.v.reduce((a,b)=>a+b,0),key=g.id+pi,my=SF.st.voted[key];return `<div class="card col"><b>${E(po.q)}</b>${po.o.map((o,oi)=>{const lab=o===null?'Ninguém':(SF.TEAMS[o]?SF.TEAMS[o].n:o);const pc=Math.round(po.v[oi]/tot*100);return `<button class="opt ${my===oi+1?'on':''}" data-a="vote" data-p="${pi}" data-o="${oi}"><i style="width:${pc}%"></i><span class="row" style="justify-content:space-between"><b style="font-weight:600">${E(lab)}</b><b>${pc}%</b></span></button>`}).join('')}<span class="mut sm">${my?'Obrigado pelo teu voto.':'Vota e ganha 10 pontos.'}</span></div>`}).join('');
  if(t==='ar')return `<div class="card col"><div class="row"><span class="ic">${I('cube')}</span><span class="grow"><b>Realidade aumentada</b><div class="mut sm">Velocidade dos jogadores, trajetória da bola e zonas quentes por cima do jogo.</div></span><button class="sw ${p.ar?'on':''}" data-a="ar" role="switch" aria-checked="${p.ar}" aria-label="Ativar realidade aumentada"></button></div><div class="mut sm">Com a AR ligada, vês os dados em cima do campo, em direto.</div></div><div class="card"><b style="font-size:.95rem">Dados em direto</b><div style="margin-top:.7rem" id="stats">${statsHtml()}</div></div>`;
- if(t==='replay')return `<div class="card col"><div class="row"><span class="ic">${I('replay')}</span><span class="grow"><b>Replay inteligente</b><div class="mut sm">${MOMS(p).length} momentos-chave. Poupas cerca de ${p.sp==='futebol'?'85':'35'} minutos.</div></span></div><div class="tl" id="moms">${momsHtml()}</div><button class="btn" data-a="playall">${I('play')}Ver só os momentos-chave</button></div>`}
+ if(t==='replay'){const hid=SF.hidden(g)&&!p.rs,start=!g.done?'':`<button class="btn ${hid?'':'sec'}" data-a="startover">${I('replay')}${p.rs&&p.over?'Ver outra vez desde o início':'Ver desde o início'}</button>`;
+  if(hid)return `<div class="card col"><div class="row"><span class="ic">${I('eye')}</span><span class="grow"><b>Replay sem spoilers</b><div class="mut sm">O resultado e os momentos-chave estão ocultos. Vê o jogo desde o apito inicial ou revela quando quiseres.</div></span></div>${start}<button class="btn sec" data-a="reveal" data-v="${g.id}">Revelar resultado e momentos</button></div>`;
+  return `<div class="card col"><div class="row"><span class="ic">${I('replay')}</span><span class="grow"><b>Replay inteligente</b><div class="mut sm">${MOMS(p).length} momentos-chave. Poupas cerca de ${p.sp==='futebol'?'85':'35'} minutos.</div></span></div><div class="tl" id="moms">${momsHtml()}</div><button class="btn" data-a="playall">${I('play')}Ver só os momentos-chave</button>${start}</div>`}}
 function renderTab(){const el=SF.$('#ptab');if(el)el.innerHTML=tabHtml();SF.$$('.ptabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===P.p.tab));const m=SF.$('#msgs');if(m)m.scrollTop=m.scrollHeight}
 /* screens */
 SF.screens.jogo=id=>{const g=SF.game(id);if(!g){return '<div class="top"><h1>Jogo não encontrado</h1></div>'}
  const p=init(id),ac=SF.access(g);
  const tabs=[['live','Resumo','chart'],['party','Watch Party','users'],['chat','Chat','chat'],['vote','Votações','vote'],['ar','Realidade aumentada','cube'],['replay','Replay','replay']];
  return `<div class="top"><button class="btn sec sm" data-a="back" aria-label="Voltar" style="min-width:2.4rem;padding:.4rem .6rem">${I('back')}</button><div class="grow"><h1 style="font-size:1rem">${E(g.title)}</h1><small>${SF.COMPS[g.comp].n}</small></div><button class="coinpill" data-a="tab" data-v="carteira">${SF.coin}<span data-count="coins">${SF.st.coins}</span></button></div>
- <div class="pgrid"><div class="pstage"><div class="stage" id="stage"><canvas id="cv" aria-label="Campo de jogo em direto"></canvas><div class="banner">${p.live&&!p.over?`<span class="tag live"><i class="dot"></i>${p.sim?'SIMULAÇÃO':'AO VIVO'}</span>`:g.done?'<span class="tag">Replay</span>':'<span class="tag">Em breve</span>'}${p.ar?'<span class="tag">AR ligada</span>':''}</div><div class="sb" id="sb">${hud()}</div>
+ <div class="pgrid"><div class="pstage"><div class="stage" id="stage"><canvas id="cv" aria-label="Campo de jogo em direto"></canvas><div class="banner">${p.live&&!p.over?`<span class="tag live"><i class="dot"></i>${p.rs?'REPLAY DESDE O INÍCIO':p.sim?'SIMULAÇÃO':'AO VIVO'}</span>`:g.done?'<span class="tag">Replay</span>':'<span class="tag">Em breve</span>'}${p.ar?'<span class="tag">AR ligada</span>':''}</div><div class="sb" id="sb">${hud()}</div>
  ${ac?'':`<div class="lock">${I('lock')}<b style="font-size:1.1rem">Compra para ver</b><span class="mut sm">Pack Jogo por ${SF.cost('jogo',g.id)} Moedas Flex</span><button class="btn" data-a="game" data-v="${g.id}">${SF.coin}Escolher pack</button></div>`}</div>
  </div><div class="pside"><div class="ptabs" role="tablist">${tabs.map(t=>`<button role="tab" data-a="ptab" data-v="${t[0]}" class="${p.tab===t[0]?'on':''}">${t[1]}</button>`).join('')}</div><div class="col" id="ptab" style="gap:.7rem">${tabHtml()}</div></div></div>`};
 SF.after.jogo=id=>{const p=P.p;if(!p||p.id!==id)return;sizeCanvas();P.stop();
  if(SF.access(p.g)&&!SF.st.watched.includes(id)){SF.st.watched.push(id);SF.st.points+=5;SF.save()}
  P.raf=requestAnimationFrame(frame);P.tick=setInterval(step,3000);window.onresize=sizeCanvas;const m=SF.$('#msgs');if(m)m.scrollTop=m.scrollHeight};
 SF.act.sim=()=>{const p=P.p;if(!SF.access(p.g)){SF.openGame(p.g.id);return}p.live=true;p.sim=true;p.over=false;p.min=1;p.q=1;p.secs=600;p.hs=0;p.as=0;p.events=[];p.stats={pos:50,sh:[0,0],pa:[0,0],km:[1,1]};SF.toast('Simulação iniciada');SF.render()};
+SF.act.startover=()=>{const p=P.p;if(!p.g.done)return;if(!SF.access(p.g)){SF.openGame(p.g.id);return}
+ p.live=true;p.sim=true;p.rs=true;p.over=false;p.min=0;p.hs=0;p.as=0;p.events=[];p.sched=sched(p.g);p.stats={pos:50,sh:[0,0],pa:[0,0],km:[1,1]};p.tab='live';SF.toast('A rever o jogo desde o início');SF.render()};
+SF.act.syncnow=()=>{const p=P.p,pa=p.party,h=SF.FRIENDS.find(f=>f.id===pa.host)||SF.FRIENDS[0];pa.lag.me=0;SF.toast('Voltaste ao momento de '+h.n+(p.live&&!p.over?" ("+p.min+"')":''));const sb=SF.$('#syncbox');if(sb)sb.innerHTML=syncHtml()};
+SF.act.syncauto=()=>{const pa=P.p.party;pa.auto=!pa.auto;if(pa.auto)pa.lag.me=0;SF.toast(pa.auto?'Sincronização automática ligada. Todos no mesmo momento':'Sincronização automática desligada');renderTab()};
 SF.act.ptab=el=>{P.p.tab=el.dataset.v;renderTab()};
 SF.act.ar=()=>{P.p.ar=!P.p.ar;SF.render();SF.toast(P.p.ar?'Realidade aumentada ligada':'Realidade aumentada desligada')};
 SF.act.vote=el=>{const p=P.p,key=p.g.id+el.dataset.p;if(SF.st.voted[key])return SF.toast('Já votaste nesta votação');p.polls[+el.dataset.p].v[+el.dataset.o]+=6;SF.st.voted[key]=+el.dataset.o+1;SF.st.points+=10;SF.save();SF.toast('Voto registado. +10 pontos');renderTab()};
@@ -118,11 +147,11 @@ SF.act.mom=el=>{const p=P.p,m=MOMS(p)[+el.dataset.v];p.rep={at:performance.now()
 SF.act.playall=()=>{const p=P.p,q=MOMS(p).slice();const f=q.shift();p.rep={at:performance.now(),dur:3200,label:(f.m+(typeof f.m==='number'?"'":''))+' '+f.d,queue:q.map(m=>({m:m.m,d:m.d}))};setMoms();SF.toast('A reproduzir os momentos-chave')};
 SF.act.invite=el=>{const pa=P.p.party,id=el.dataset.v;
  if(!id){const free=SF.FRIENDS.find(f=>!pa.members.includes(f.id));if(!free)return;el.dataset.v=free.id;return SF.act.invite(el)}
- if(pa.members.includes(id))return;pa.members.push(id);SF.st.invites++;SF.st.points+=5;SF.save();const f=SF.FRIENDS.find(x=>x.id===id);
+ if(pa.members.includes(id))return;pa.members.push(id);if(pa.on)pa.lag[id]=DEFLAG[id]||4;SF.st.invites++;SF.st.points+=5;SF.save();const f=SF.FRIENDS.find(x=>x.id===id);
  SF.toast(pa.on?f.n+' entrou na Watch Party':'Convite enviado a '+f.n+'. +5 pontos');renderTab()};
-SF.act.startparty=()=>{const pa=P.p.party;if(!pa.members.length)pa.members.push('ines');pa.on=true;SF.toast('Watch Party iniciada');renderTab()};
+SF.act.startparty=()=>{const pa=P.p.party;if(!pa.members.length)pa.members.push('ines');pa.on=true;pa.host=pa.members[0];pa.lag={me:7};pa.members.forEach(id=>{pa.lag[id]=id===pa.host?0:DEFLAG[id]||4});SF.toast('Watch Party iniciada');renderTab()};
 SF.act.endparty=()=>{P.p.party.on=false;renderTab()};
 SF.act.mic=()=>{P.p.party.mic=!P.p.party.mic;renderTab()};SF.act.cam=()=>{P.p.party.cam=!P.p.party.cam;renderTab()};
 SF.act.react=el=>{const st=SF.$('#stage');const s=document.createElement('span');s.className='rx';s.textContent={Golo:'⚽',Uau:'😮',Palmas:'👏',Ai:'😬'}[el.dataset.v];s.style.left=(10+Math.random()*80)+'%';st.appendChild(s);setTimeout(()=>s.remove(),2000)};
-SF.act.sendchat=()=>{const i=SF.$('#cin');if(!i||!i.value.trim())return;P.p.chat.push({n:SF.st.name,t:i.value.trim(),me:true});i.value='';const m=SF.$('#msgs');m.innerHTML=chatHtml();m.scrollTop=m.scrollHeight;const f=pick(SF.FRIENDS);setTimeout(()=>{if(P.p)addChat(f.n,pick(BOT[f.id]))},1200)};
+SF.act.sendchat=()=>{const i=SF.$('#cin');if(!i||!i.value.trim())return;P.p.chat.push({n:SF.who(),t:i.value.trim(),me:true});i.value='';const m=SF.$('#msgs');m.innerHTML=chatHtml();m.scrollTop=m.scrollHeight;const f=pick(SF.FRIENDS);setTimeout(()=>{if(P.p)addChat(f.n,pick(BOT[f.id]))},1200)};
 })();

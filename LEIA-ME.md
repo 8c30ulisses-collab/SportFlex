@@ -44,3 +44,11 @@ Quando um clube te autorizar, coloca o ficheiro numa pasta `crests/` e em `data.
 - Os preços, as moedas e os pagamentos são simulados. Os emblemas são genéricos.
 - A SportFlex não tem direitos de transmissão. Enquanto não os tiveres, mostra a app como demonstração e mantém o aviso "DEMO".
 - Os dados de cada pessoa (moedas, packs) ficam guardados só no telemóvel ou browser dela.
+
+## 9. Ligar a IA a sério ao assistente (opcional)
+Sem isto, o assistente funciona na mesma: usa uma base de conhecimento dentro da app (futebol, jogos, preços e funcionalidades) e responde sempre que o criador da app é perguntado com a frase definida. Para ele responder a **qualquer** pergunta de futebol com um modelo de IA, é preciso um pequeno servidor que guarda a chave:
+1. Cria uma chave em https://console.anthropic.com (tem custo por utilização; define um limite de gasto na conta).
+2. Publica esta pasta na **Vercel** (vercel.com > Add New > Project > importa o teu repositório do GitHub; funciona com repositório privado). A pasta `api/` com o ficheiro `chat.js` é detetada sozinha.
+3. Na Vercel, em Settings > Environment Variables, cria `ANTHROPIC_API_KEY` com a tua chave e faz Redeploy.
+4. Abre o endereço da Vercel. A app liga-se sozinha a `/api/chat`. Se o servidor não existir ou falhar, volta ao modo local sem avisar o utilizador.
+Notas: o GitHub Pages não corre servidores, por isso lá fica sempre o modo local. Nunca coloques a chave em ficheiros da app. O servidor limita cada IP a 25 perguntas em 10 minutos. Para um modelo mais forte, cria a variável `MODEL` (por omissão usa `claude-haiku-5-5`, o mais barato).
