@@ -33,6 +33,7 @@ const P={
  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
  plus:'<path d="M12 5v14M5 12h14"/>',
  hand:'<path d="M8 12V6a1.5 1.5 0 013 0v5M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6a1.5 1.5 0 013 0v7c0 4-2 7-6 7s-5-2-7-5l-1-2a1.5 1.5 0 012.500-1.500L8 14"/>',
+ vol:'<path d="M4 9v6h4l5 4V5L8 9zM16.5 9a4 4 0 010 6M19 6.500a8 8 0 010 11"/>',
  lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>'
 };
 SF.icon=(n,c)=>`<svg class="i ${c||''}" viewBox="0 0 24 24" aria-hidden="true">${P[n]||''}</svg>`;
@@ -43,7 +44,7 @@ SF.coin='<i class="coin"></i>';
 /* estado */
 const KEY='sportflex-demo-v3';
 const def=()=>({onboarded:false,name:'',coins:12,points:120,club:'',favs:[],sports:['futebol'],ess:false,accent:'#F4522D',ts:0,
-  games:[],packs:[],tx:[],watched:[],disc:false,preds:{},predWin:0,invites:0,gifts:0,voted:{},notif:true,fun:{},nospoil:false,reveal:{},rem:{},remMin:15});
+  games:[],packs:[],tx:[],watched:[],disc:false,preds:{},predWin:0,invites:0,gifts:0,voted:{},notif:true,fun:{},nospoil:false,reveal:{},rem:{},remMin:15,speak:false});
 SF.st=def();
 try{const s=localStorage.getItem(KEY);if(s)Object.assign(SF.st,JSON.parse(s))}catch(e){}
 SF.save=()=>{try{localStorage.setItem(KEY,JSON.stringify(SF.st))}catch(e){}};

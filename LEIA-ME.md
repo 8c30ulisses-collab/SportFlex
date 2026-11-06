@@ -45,10 +45,10 @@ Quando um clube te autorizar, coloca o ficheiro numa pasta `crests/` e em `data.
 - A SportFlex não tem direitos de transmissão. Enquanto não os tiveres, mostra a app como demonstração e mantém o aviso "DEMO".
 - Os dados de cada pessoa (moedas, packs) ficam guardados só no telemóvel ou browser dela.
 
-## 9. Ligar a IA a sério ao assistente (opcional)
-Sem isto, o assistente funciona na mesma: usa uma base de conhecimento dentro da app (futebol, jogos, preços e funcionalidades) e responde sempre que o criador da app é perguntado com a frase definida. Para ele responder a **qualquer** pergunta de futebol com um modelo de IA, é preciso um pequeno servidor que guarda a chave:
-1. Cria uma chave em https://console.anthropic.com (tem custo por utilização; define um limite de gasto na conta).
-2. Publica esta pasta na **Vercel** (vercel.com > Add New > Project > importa o teu repositório do GitHub; funciona com repositório privado). A pasta `api/` com o ficheiro `chat.js` é detetada sozinha.
-3. Na Vercel, em Settings > Environment Variables, cria `ANTHROPIC_API_KEY` com a tua chave e faz Redeploy.
-4. Abre o endereço da Vercel. A app liga-se sozinha a `/api/chat`. Se o servidor não existir ou falhar, volta ao modo local sem avisar o utilizador.
-Notas: o GitHub Pages não corre servidores, por isso lá fica sempre o modo local. Nunca coloques a chave em ficheiros da app. O servidor limita cada IP a 25 perguntas em 10 minutos. Para um modelo mais forte, cria a variável `MODEL` (por omissão usa `claude-haiku-5-5`, o mais barato).
+## 9. O assistente (corre todo no navegador)
+O assistente não usa servidor, API de IA nem chaves, e não faz pedidos à rede: responde no próprio aparelho, sem custo por pergunta. Está em `ai.js`, que percebe a pergunta (sem acentos, abreviaturas, alcunhas como "slb", pequenos erros), consulta os dados da app (jogos, preços, saldo, spoilers) e lembra-se do último clube, jogo ou pack de que se falou.
+- A frase para quando não sabe está numa única constante no topo do ficheiro: `const FALLBACK='...'`.
+- Para acrescentar uma pergunta nova, junta uma linha à lista `FAQ` (secção "3. PERGUNTAS E RESPOSTAS"):
+  `{ id:'horario-suporte', k:/horario (do )?(suporte|apoio)/, a:'Esta demonstração não tem apoio ao cliente.', ex:['qual é o horário do suporte?'] },`
+  `k` é uma expressão aplicada ao texto sem acentos e em minúsculas, `a` é o texto da resposta (ou uma função que o devolve, se depender dos dados da app) e `ex` são exemplos de perguntas. Opcional: `go:'perfil'` acrescenta um botão para abrir um separador.
+- Para respostas que mudam com os dados (preços, jogos), usa uma função: `a:()=>'O Pack Clube custa '+SF.packPrice('clube','ben')+' moedas.'`.

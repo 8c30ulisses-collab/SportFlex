@@ -150,4 +150,68 @@ SF.screens.jogos=()=>{const s=SF.st,a=SF.myAccess(),done=SF.GAMES.filter(g=>g.do
  <div class="cB"><div style="order:2"><div class="h2" style="margin-top:0"><h2>Os meus packs</h2></div><div class="col" style="gap:.6rem;margin-top:.6rem">${packs}</div></div>
  <div class="row" style="order:4;gap:.6rem;flex-wrap:wrap"><button class="btn sec grow" data-a="tab" data-v="comparar">${I('spark')}Comparar packs</button><button class="btn sec grow" data-a="tab" data-v="explorar">${I('search')}Explorar</button></div></div></div>`
  :`<div class="col" style="gap:1rem"><div class="card col" style="align-items:center;text-align:center"><span class="ic">${I('ball')}</span><b>Ainda não tens jogos</b><span class="mut sm">Um jogo custa 1 a 3 moedas e o replay fica disponível durante ${SF.SEASON.replay} dias. Compara as opções para pagar só pelo que queres ver.</span><button class="btn" data-a="tab" data-v="comparar">${I('spark')}Comparar packs</button><button class="btn sec" data-a="tab" data-v="explorar">${I('search')}Explorar jogos</button></div></div>`}`};
+/* ---------- Voz: ler em voz alta (síntese) ---------- */
+SF.canSpeak=()=>{try{return 'speechSynthesis' in window&&typeof SpeechSynthesisUtterance!=='undefined'}catch(e){return false}};
+const spokenText=t=>String(t).replace(/\bvs\b/gi,'contra').replace(/(\d+)\s*-\s*(\d+)/g,'$1 a $2').replace(/[·|]/g,',').replace(/\s+/g,' ').trim();
+SF.stopSpeak=()=>{try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){}};
+SF.speak=t=>{if(!SF.canSpeak()||!t)return false;
+ try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(spokenText(t));u.lang='pt-PT';
+  const vs=speechSynthesis.getVoices?speechSynthesis.getVoices():[];const v=vs.find(x=>/^pt[-_]PT/i.test(x.lang))||vs.find(x=>/^pt/i.test(x.lang));if(v){u.voice=v;u.lang=v.lang}
+  u.rate=1;u.onend=u.onerror=()=>{SF._speaking=false};SF._speaking=true;speechSynthesis.speak(u);return true}catch(e){return false}};
+SF.act.say=el=>{const m=SF._chat&&SF._chat[+el.dataset.v];if(!m)return;if(SF._speaking){SF.stopSpeak();SF._speaking=false;return}if(!SF.speak(m.t))SF.toast('Este aparelho não consegue ler em voz alta')};
+SF.act.spkon=()=>{if(!SF.canSpeak()){SF.toast('Este aparelho não suporta leitura em voz alta');return}
+ SF.st.speak=!SF.st.speak;SF.save();if(SF.st.speak)SF.speak('Leitura em voz alta ligada');else SF.stopSpeak();
+ if(SF.sheetOpen&&SF.$('#amsgs'))SF.chatOpen();else SF.render();SF.toast(SF.st.speak?'Leitura em voz alta ligada':'Leitura em voz alta desligada')};
+
+/* ---------- Voz: comandos (reconhecimento de fala) ---------- */
+const nrm=t=>String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+const goTo=r=>()=>SF.go(r);
+SF.voiceIntent=raw=>{const q=nrm(raw);if(!q)return null;const has=re=>re.test(q);
+ if(has(/spoiler/)){const on=has(/desativ|deslig|tira|remove/)?false:has(/\bativ|\blig|quero/)?true:!SF.st.nospoil;
+  return {say:on?'Modo sem spoilers ligado':'Modo sem spoilers desligado',run:()=>{SF.st.nospoil=on;SF.save();SF.render()}}}
+ if(has(/(ler|le|fala|falar|lê) (as )?respostas|voz alta/))return {say:'Leitura em voz alta ligada',run:()=>{if(SF.canSpeak()){SF.st.speak=true;SF.save();SF.render()}}};
+ if(has(/compar|poupar|mais barat|combinacao/))return {say:'A abrir o comparador de packs',run:goTo('comparar')};
+ if(has(/carteira|moedas|saldo|carregar/))return {say:'A abrir a carteira. Tens '+SF.st.coins+' moedas',run:goTo('carteira')};
+ if(has(/(meus|minhas) (jogos|acessos|packs)|o que (eu )?comprei/))return {say:'A abrir os teus jogos',run:goTo('jogos')};
+ if(has(/(jogos )?(do|dos) meus? clubes?/))return SF.st.favs.length?{say:'A mostrar os jogos dos teus clubes',run:()=>{SF._f={p:'all',d:'',clubs:true,packs:false};SF._ex.tab='jogo';SF._ex.q='';SF.go('explorar');SF.render()}}:{say:'Ainda não escolheste clubes. Escolhe-os no perfil',run:goTo('perfil')};
+ if(has(/\bhoje\b/))return {say:'A mostrar os jogos de hoje',run:()=>{SF._f={p:'hoje',d:'',clubs:false,packs:false};SF._ex.tab='jogo';SF.go('explorar');SF.render()}};
+ if(has(/esta semana|da semana/))return {say:'A mostrar os jogos desta semana',run:()=>{SF._f={p:'semana',d:'',clubs:false,packs:false};SF._ex.tab='jogo';SF.go('explorar');SF.render()}};
+ if(has(/(proximo|seguinte) jogo|ver o jogo|quero ver/)){const g=SF.nextGame().g;return {say:'A abrir '+g.title,run:()=>SF.openGame(g.id)}}
+ if(has(/premio|pontos|ranking|missoes|recompensa/))return {say:'A abrir as recompensas. Tens '+SF.st.points+' pontos',run:goTo('premios')};
+ if(has(/perfil|definicoes|configuracoes|tema|cor da app/))return {say:'A abrir o perfil',run:goTo('perfil')};
+ if(has(/\b(home|inicio|pagina inicial|ecra inicial)\b/))return {say:'A voltar ao início',run:goTo('home')};
+ if(has(/assistente|ajuda|pergunta/))return {say:'A abrir o assistente',run:()=>SF.chatOpen()};
+ if(has(/explor|procurar|todos os jogos|calendario|jogos/))return {say:'A abrir os jogos',run:()=>{SF._f={p:'all',d:'',clubs:false,packs:false};SF.go('explorar');SF.render()}};
+ if(has(/\b(voltar|atras)\b/))return {say:'A voltar',run:()=>SF.act.back()};
+ return null};
+SF.voiceRun=raw=>{const it=SF.voiceIntent(raw);SF.close();
+ if(it){SF.toast('Ouvi: “'+raw+'”');if(SF.st.speak)SF.speak(it.say);setTimeout(it.run,30);return true}
+ /* não percebi: pergunta ao assistente */
+ SF.toast('Não percebi “'+raw+'”. A perguntar ao assistente');setTimeout(()=>SF.act.ask({dataset:{v:raw}}),60);return false};
+const SR=()=>window.SpeechRecognition||window.webkitSpeechRecognition;
+SF.voiceSupported=()=>!!SR();
+const VCMD=['Mostra os jogos do meu clube','Abre a carteira','Quero ver o próximo jogo','Quais são os meus prémios','Comparar packs','Os meus jogos'];
+SF._v={st:'idle',txt:'',msg:''};
+const vHtml=()=>{const v=SF._v,sup=SF.voiceSupported(),I2=SF.icon;
+ const head={idle:'Diz o que queres fazer',listen:'A ouvir…',err:'Não consegui ouvir'}[v.st]||'Diz o que queres fazer';
+ const sub=v.st==='listen'?(v.txt?'“'+E(v.txt)+'”':'Fala agora.'):v.st==='err'?E(v.msg):sup?'Toca no microfone e fala. Precisa de internet e de autorização para usar o microfone.':'Este browser não tem reconhecimento de voz. Usa os comandos em baixo.';
+ return `<div style="text-align:center;display:flex;flex-direction:column;gap:.8rem;align-items:center"><button class="vmic ${v.st==='listen'?'on':''}" data-a="vlisten" ${sup?'':'disabled'} aria-label="${v.st==='listen'?'A ouvir. Toca para parar':'Tocar para falar'}">${I2('mic')}</button><h3>${head}</h3><div class="mut sm" role="status" aria-live="polite">${sub}</div></div>
+ <div class="mut sm">Experimenta dizer: “abre a carteira”, “próximo jogo”, “jogos de hoje”, “comparar packs”.</div>
+ <div class="col" style="gap:.5rem">${VCMD.map(c=>`<button class="btn sec" data-a="vgo" data-v="${E(c)}">“${E(c)}”</button>`).join('')}</div>`};
+const vSet=o=>{Object.assign(SF._v,o);const b=SF.$('#vbox');if(b)b.innerHTML=vHtml()};
+SF.act.voice=()=>{SF.stopSpeak();SF._v={st:'idle',txt:'',msg:''};SF.sheet('<div id="vbox" class="col" style="gap:1rem">'+vHtml()+'</div>');
+ SF._onclose=()=>{try{SF._rec&&SF._rec.abort()}catch(e){}SF._rec=null}};
+SF.act.vgo=el=>SF.voiceRun(el.dataset.v);
+SF.act.vlisten=()=>{const C=SR();if(!C){vSet({st:'err',msg:'Este browser não suporta reconhecimento de voz. Usa os comandos em baixo.'});return}
+ if(SF._v.st==='listen'){try{SF._rec.stop()}catch(e){}return}
+ SF.stopSpeak();let alts=[],done=false;const r=new C();SF._rec=r;r.lang='pt-PT';r.interimResults=true;r.maxAlternatives=3;r.continuous=false;
+ r.onstart=()=>vSet({st:'listen',txt:''});
+ r.onresult=ev=>{let it='';for(let i=ev.resultIndex;i<ev.results.length;i++){const res=ev.results[i];if(res.isFinal){alts=[];for(let k=0;k<res.length;k++)alts.push(res[k].transcript)}else it+=res[0].transcript}
+  if(alts.length)vSet({txt:alts[0]});else if(it)vSet({txt:it})};
+ r.onerror=ev=>{const e=ev&&ev.error;if(e==='aborted')return;done=true;
+  const M={'not-allowed':'Sem autorização para o microfone. Ativa-a nas definições do browser ou da app e tenta outra vez.','service-not-allowed':'O serviço de voz não está disponível neste modo ou aparelho. Usa os comandos em baixo ou abre o site no browser.','no-speech':'Não ouvi nada. Toca no microfone e fala logo a seguir.','network':'Sem ligação ao serviço de voz. Verifica a internet.','audio-capture':'Não encontrei nenhum microfone.','language-not-supported':'O português não está disponível neste aparelho.'};
+  vSet({st:'err',msg:M[e]||'Algo correu mal com o reconhecimento de voz ('+(e||'erro')+'). Usa os comandos em baixo.'})};
+ r.onend=()=>{SF._rec=null;if(done)return;done=true;if(!alts.length){if(SF._v.st==='listen')vSet({st:'err',msg:'Não ouvi nada. Toca no microfone e fala logo a seguir.'});return}
+  const pick=alts.find(a=>SF.voiceIntent(a))||alts[0];SF.voiceRun(pick)};
+ try{r.start()}catch(e){vSet({st:'err',msg:'Não consegui iniciar o microfone. Tenta outra vez.'})}};
 })();
